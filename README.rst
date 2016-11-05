@@ -44,8 +44,7 @@ Acknowledgments
 
 Huge thanks to the creators of:
 
-* `rsync <https://rsync.samba.org/>`_, whose software allowed this project to be
-   possible.
+* `rsync <https://rsync.samba.org/>`_, whose software allowed this project to be possible.
 * `GNU Parted <https://www.gnu.org/software/parted/index.shtml/>`_
 * And `GPT fdisk <http://www.rodsbooks.com/gdisk/>`_
   
