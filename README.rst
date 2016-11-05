@@ -26,7 +26,7 @@ If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily
 Documentation
 =============
 
-Documentation can be found on the Python Package Index (link coming).
+Documentation can be found on the `Python Package Index <https://pythonhosted.org/WereSync/>`_.
 
 Contributing and Bug Reports
 ============================
