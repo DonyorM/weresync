@@ -6,7 +6,7 @@ A lone hard drive stands atop a data heap, staring at the full moon. Suddenly, i
 transforms...into a bootable clone of your drive, whirring hungrily at the digital
 moon.
 
-WereSync takes a Linux hard drive and effectively clones ti, but works incrementally
+WereSync takes a Linux hard drive and effectively clones it, but works incrementally
 so you don't have to spend so long backing up each time. Additionally, WereSync
 can clone to a smaller drive, if your data will fit on the smaller drive.
 
