@@ -36,6 +36,9 @@ for word in glob.glob("/*/mkfs.*"):
     val = word.split(".")
     SUPPORTED_FILESYSTEM_TYPES += val
 
+SUPPORTED_PARTITION_TABLE_TYPES = ["gpt", "msdos"]
+"""The names, as reported by `parted` of the partition table types supported by this program."""
+
 class DeviceManager:
     """A class that allows various operations on a device.
 
@@ -127,7 +130,11 @@ class DeviceManager:
 
 
     def get_partition_table_type(self):
-        """Returns a string passed on the drive partition table type. Usually either "gpt" for GPT drives or "msdos" for MBR drives."""
+        """Gets the type of partition table on the device. Usually "gpt" for GPT disks or "msdos" for MBR disks.
+
+        :returns: A string containing the name of the partition table.
+        :raises DeviceError: If the parted command has a non-zero return code.
+        :raises UnsupportedDeviceError: If the device does not have a supported partition type."""
 
         process = subprocess.Popen(["parted", "-s", self.device, "print"], stdout=subprocess.PIPE)
         output, error = process.communicate()
@@ -138,7 +145,13 @@ class DeviceManager:
         for line in result:
             line = line.split(":")
             if line[0] == "Partition Table":
-                return line[1].strip()
+                table_type = line[1].strip()
+                break
+
+        if not table_type in SUPPORTED_PARTITION_TABLE_TYPES:
+            raise weresync.exception.UnsupportedDeviceError("Partition table type {0} not supported by WereSync.".format(table_type))
+        else:
+            return table_type
 
     def get_drive_size(self):
         """Returns the maximum size of the drive, in sectors."""
@@ -199,7 +212,15 @@ class DeviceManager:
         return int(self._get_general_info(partition_num)[2])
 
     def get_partition_size(self, partition_num):
-        if self.get_partition_table_type() == "gpt":
+        """Gets the size of a partition in 512B sectors.
+
+        :param partition_num: An int representing the partition whose size to get.
+
+        :returns: An int representing the number of 512B blocks in the partition
+        :raises DeviceError: if the commands getting the size of the partition fail.
+        :raises ValueError: if the drive has an unsupported partition table type."""
+        table_type = self.get_partition_table_type()
+        if table_type == "gpt":
             proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             output, error = proc.communicate()
             if proc.returncode != 0:
@@ -208,38 +229,79 @@ class DeviceManager:
             for line in str(output, "utf-8").split("\n"):
                 if line.strip().startswith(str(partition_num)):
                     words = [x for x in line.split(" ") if x != ""]
-                    return int(words[2]) - int(words[1]) #start sector is the second element in this list, last sector is third element 
+                    return int(words[2]) - int(words[1]) #start sector is the second element in this list, last sector is third element
+        elif table_type == "msdos":
+            proc = subprocess.Popen(["sfdisk", "-s", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = proc.communicate()
+            if proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.device, "Error getting partition size for partition {0}".format(partition_num), str(error, "utf-8"))
+            return int(output)
+        else:
+            raise ValueError("Unsupported table type")
+
 
     def get_partition_code(self, partition_num):
-        """Gets the partition code (as defined by sgdisk) for the passed partition number.
+        """For GPT disks: gets the partition code (as defined by sgdisk) for the passed partition number.
+        For MBR disks: gets the partition code (as defined by sfdisk) for the passed partition number.
 
         :param partition_num: the number of the partition whose code to find.
-        :returns: a four character string containg the partition code as recongized by sgdisk."""
-        proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate()
-        for line in str(output, "utf-8").split("\n"):
-            if line.strip().startswith(str(partition_num)):
-                words = line.strip().split()
-                return words[5] #The code appears in the fifth column, but the size takes up two columns (one for value and one for unit), so the code appears in the sixth column.
+        :raises DeviceError: If the command returns a non-zero return code.
+        :raises ValueError: If an invalid partition number (one that doesn't exist) is passed.
+        :returns: a string containing the partition code for the appropriate disk type."""
+        table_type = self.get_partition_table_type()
+        if table_type == "gpt":
+            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = proc.communicate()
+            if proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.device, "Error getting device information from sgdisk", str(error, "utf-8"))
+            for line in str(output, "utf-8").split("\n"):
+                if line.strip().startswith(str(partition_num)):
+                    words = line.strip().split()
+                    return words[5] #The code appears in the fifth column, but the size takes up two columns (one for value and one for unit), so the code appears in the sixth column.
+        elif table_type == "msdos":
+            proc = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = proc.communicate()
+            if proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.device, "Error getting device partition information.", str(error, "utf-8"))
+
+            for line in str(output, "utf-8").split("\n"):
+                if line.strip().startswith(self.part_mask.format(self.device, partition_num)):
+                    words = line.split()
+                    loc = 4 #the code is in the 5th column
+                    if "*" in line:
+                        loc += 1 #if the partition is bootable, then there is an extra column before the code
+
+                    return words[loc]
+
+            #No partition found
+            raise ValueError("Invalid partition number, no partition found.")
 
     def get_partition_alignment(self):
-        """Returns the number of sectors the drive must be aligned to. For GPT disk this is found using sgdisk's output."""
+        """Returns the number of sectors the drive must be aligned to. For GPT disk this is found using sgdisk's output.
+        This function is only supported by GPT disks.
 
-        #TODO add MSDOS support
-        process = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = process.communicate()
-        if process.returncode != 0:
-            raise weresync.exception.DeviceError(self.device, "Error finding partition alignment.", str(error, "utf-8"))
-        words = [x for x in str(output, "utf-8").split("\n") if x != ""]
-        for word in words:
-            if word.startswith("Partitions will be aligned on"):
-                result = word.split("Partitions will be aligned on ")
-                #the first value of result will be "", the second value will be
-                #"{alignmentNum}-sector boundaries"
-                value = result[1].split("-")
-                return int(value[0])
+        :returns: An integer that represents the partition alignment of the device.
+        :raises DeviceError: If the command returns a non-zero return code
+        :raise UnsupportedDeviceError: If this is called on a non-GPT disk"""
 
-        raise weresync.exception.DeviceError(self.device, "sgdisk returned abnormal output.")
+        table_type = self.get_partition_table_type()
+        if table_type == "gpt":
+            process = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = process.communicate()
+            if process.returncode != 0:
+                raise weresync.exception.DeviceError(self.device, "Error finding partition alignment.", str(error, "utf-8"))
+            words = [x for x in str(output, "utf-8").split("\n") if x != ""]
+            for word in words:
+                if word.startswith("Partitions will be aligned on"):
+                    result = word.split("Partitions will be aligned on ")
+                    #the first value of result will be "", the second value will be
+                    #"{alignmentNum}-sector boundaries"
+                    value = result[1].split("-")
+                    return int(value[0])
+
+            raise weresync.exception.DeviceError(self.device, "sgdisk returned abnormal output.")
+
+        raise weresync.exception.UnsupportedDeviceError("Only GPT devices have partition alignment")
 
 #    def get_partition_size(self, partition_num, flag):
 #        """Returns the total size of a drive in 512B blocks
@@ -254,26 +316,67 @@ class DeviceManager:
 #        return int(output) #valid results will always be a number
 
     def get_empty_space(self):
-        """Returns the amount of empty space *after* the last partition. This does not include space hidden between partitions. Returns an integer"""
-        proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, error = proc.communicate()
-        if proc.returncode != 0:
-            raise weresync.exception.DeviceError(self.device, "Error getting device information.", str(error, "utf-8"))
-        result = str(output, "utf-8").split("\n")
-        total_sectors = 0
-        for line in result:
-            if line.startswith("Disk " + self.device):
-                words = line.split(" ")
-                for word in words:
-                    try:
-                        total_sectors = int(word)
-                        break
-                    except ValueError:
-                        continue
+        """Returns the amount of empty space *after* the last partition. This does not include space hidden between partitions.
 
-        last_part_info = [x for x in result[-2].split(" ") if x != ""] #the information for the last partition is always the last line in the output. The very last line, however is empty. The last real line is 2 back
-        last_sector = int(last_part_info[2]) #the third column is the "end" sector column
-        return total_sectors - last_sector
+        :returns: An integer representing the number of sectors free after the last partition.
+        :raises DeviceError: If the command has a non-zero return code"""
+        table_type = self.get_partition_table_type()
+        if table_type == "gpt":
+            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = proc.communicate()
+            if proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.device, "Error getting device information.", str(error, "utf-8"))
+            result = str(output, "utf-8").split("\n")
+            total_sectors = 0
+            for line in result:
+                if line.startswith("Disk " + self.device):
+                    words = line.split(" ")
+                    for word in words:
+                        try:
+                            total_sectors = int(word)
+                            break
+                        except ValueError:
+                            continue
+
+            last_part_info = [x for x in result[-2].split(" ") if x != ""] #the information for the last partition is always the last line in the output. The very last line, however is empty. The last real line is 2 back
+            last_sector = int(last_part_info[2]) #the third column is the "end" sector column
+            return total_sectors - last_sector
+        elif table_type == "msdos":
+            #other possible table types with throw an UnsupportedDeviceError
+            #in the get_partition_table_type() method
+            proc = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr = subprocess.PIPE)
+            output, error = proc.communicate()
+            lines = str(output, "utf-8").split("\n")
+            for line in lines:
+                if "sectors" in line:
+                    words = line.split()
+                    for word in reversed(words):
+                        try:
+                            total_sectors = int(word)
+                            break
+                        except ValueError:
+                            continue
+
+                    break
+
+            last_sector = 0
+            for val in reversed(lines):
+                if val.strip() == "":
+                    continue
+                vals = val.split()
+                loc = 2
+                if "*" in val:
+                    loc += 1
+
+                try:
+                    value = int(vals[loc])
+                except ValueError:
+                    break #When this trips, we should be past all the partition descriptions
+                if value >= last_sector:
+                    last_sector = value
+
+            return total_sectors - value
+
 
     def get_partition_file_system(self, part_num):
         """Returns the file system (ext4, ntfs, etc.) of the partition. If a partition system that can't be created by this system is found, None is return.

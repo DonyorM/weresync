@@ -25,3 +25,8 @@ class CopyError(Exception):
     def __init__(self, message, errors=None):
         self.message = message
         self.errors = errors
+
+class UnsupportedDeviceError(Exception):
+    """Exception thrown to show that action is not supported on the partition table type of the device."""
+    def __init__(self, message):
+        self.message = message
