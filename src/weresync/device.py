@@ -281,8 +281,7 @@ class DeviceManager:
         This function is only supported by GPT disks.
 
         :returns: An integer that represents the partition alignment of the device.
-        :raises DeviceError: If the command returns a non-zero return code
-        :raise UnsupportedDeviceError: If this is called on a non-GPT disk"""
+        :raises DeviceError: If the command returns a non-zero return code"""
 
         table_type = self.get_partition_table_type()
         if table_type == "gpt":
@@ -300,8 +299,19 @@ class DeviceManager:
                     return int(value[0])
 
             raise weresync.exception.DeviceError(self.device, "sgdisk returned abnormal output.")
-
-        raise weresync.exception.UnsupportedDeviceError("Only GPT devices have partition alignment")
+        elif table_type == "msdos":
+            process = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            output, error = process.communicate()
+            if process.returncode != 0:
+                raise weresync.exception.DeviceError(self.device, "Error getting partition alignment", str(error, "utf-8"))
+            for line in str(output, "utf-8").split("\n"):
+                if line.startswith("Sector size"):
+                    parts = line.split("Sector size (logical/physical): ")[1].split(" / ")
+                    #After the label there is minimum and optimal size seperated by a slash
+                    #Optimal is second
+                    logical = int(parts[0].strip().split()[0])
+                    physical = int(parts[1].strip().split()[0])
+                    return int(physical / logical)
 
 #    def get_partition_size(self, partition_num, flag):
 #        """Returns the total size of a drive in 512B blocks
@@ -547,7 +557,7 @@ class DeviceCopier:
 
         LOGGER.debug("Proposed partition table:\n" + final_str)
 
-        transfer_proc = subprocess.Popen(["sfdisk", "-uS", self.target.device], stderr=subprocess.PIPE, stdin=subprocess.PIPE, universal_newlines=True)
+        transfer_proc = subprocess.Popen(["sfdisk", "--force", self.target.device], stderr=subprocess.PIPE, stdin=subprocess.PIPE, universal_newlines=True)
         output, error = transfer_proc.communicate(input=final_str)
         if transfer_proc.returncode != 0:
             raise weresync.exception.CopyError("Could not copy partition table to target device.", error)

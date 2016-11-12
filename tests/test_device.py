@@ -378,12 +378,26 @@ def test_get_sector_alignment_number_invalid_return(monkeypatch):
     with pytest.raises(DeviceError) as execinfo:
         result = manager.get_partition_alignment()
 
-def test_get_partition_alignment_invalid_table_type(monkeypatch):
-    generateStandardMock(monkeypatch, b"", b"", 0, "msdos")
-    manager = device.DeviceManager("msdos.img")
-    with pytest.raises(UnsupportedDeviceError) as execinfo:
-        manager.get_partition_alignment()
+def test_get_partition_alignment_msdos(monkeypatch):
+    generateStandardMock(monkeypatch, b"""Disk /dev/loop0: 7516 MB, 7516192768 bytes
+255 heads, 63 sectors/track, 913 cylinders, total 14680064 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 0x524f0bf8
 
+      Device Boot      Start         End      Blocks   Id  System
+    """, b"", 0, "msdos")
+    manager = device.DeviceManager("msdos.img")
+    result = manager.get_partition_alignment()
+    #Basically, this is testing if the physical partition is different then the logical partition. If so, then sectors will need to be aligned properly. That isn't the case here.
+    assert result == 1
+
+def test_get_partition_alignment_msdos_non_zero_return_code(monkeypatch):
+    generateStandardMock(monkeypatch, b"", b"Error msdos", 1, "msdos")
+    manager = device.DeviceManager("msdos.img")
+    with pytest.raises(DeviceError) as exceinfo:
+        result = manager.get_partition_alignment()
 
 def test_get_partition_file_system(monkeypatch):
     generateStandardMock(monkeypatch, b"ext4", b"", 0)
