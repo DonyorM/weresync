@@ -48,6 +48,9 @@ def copy_drive(source, target,
     :param efi_partition: If not None, this is an int that represents the partition to mount at /boot/efi when installing grub.
     :param mount_points: Expects a tuple containing two strings pointing to the directories where partitions should be mounted in case of testing. If None, the function will generate two random directories in the /tmp folder. Defaults to None.
 
+    :raises DeviceError: If there is an error reading data from one device or another.
+    :raises CopyError: If there is an error copying the data between the two devices.
+
     :returns: True on success and an error message or exception on failure.
     """
     source_manager = device.DeviceManager(source, source_part_mask)

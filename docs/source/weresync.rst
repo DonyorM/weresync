@@ -9,24 +9,19 @@ help flag on the weresync command::
 
     $ weresync -h
 
-.. warning::
-
-    WereSync does not currently support MBR drives. It only functions with GPT
-    drives. Any contribution to adding MBR capability would be appreciated.
-
 Basic Usage
 ===========
 
 WereSync always requires a source drive and a target drive. The source drive comes
-first. So to copy from /dev/sda to /dev/sdb, use this command::
+first. WereSync requires root permissions in order to access hard drive data. So to copy from /dev/sda to /dev/sdb, use this command::
 
-    $ weresync /dev/sda /dev/sdb
+    $ sudo weresync /dev/sda /dev/sdb
 
 This will simply copy data from one partition to the another, and if the partitions
 are different, you will encounter an error. To have WereSync fix your target drives
 partitions, use the ``-C`` flag::
 
-    $ weresync -C /dev/sda /dev/sdb.
+    $ sudo weresync -C /dev/sda /dev/sdb.
 
 On subsequent backups, you may not want to include the -C flag, since this can
 sometimes trigger unnecessary repartitioning.
@@ -39,7 +34,7 @@ partition can trigger the mechanisms used to find the grub partition.
 
 .. code-block:: bash
 
-    $ weresync -C -E 2 -g 3 /dev/sda /dev/sdb
+    $ sudo weresync -C -E 2 -g 3 /dev/sda /dev/sdb
 
 Obviously replace the numbers with the proper values for your system. Usually the
 grub partition will be the one mounted on /

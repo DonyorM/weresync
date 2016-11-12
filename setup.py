@@ -9,7 +9,7 @@ def read(fname):
 from setuptools import setup, find_packages
 setup(
     name="WereSync",
-    version="0.1a3",
+    version="0.1",
     package_dir={"" : "src"},
     packages=find_packages("src"),
     install_requires=["parse>=1.6.6"],
@@ -24,5 +24,5 @@ setup(
     description="Incrementally clones Linux drives",
     long_description=read("README.rst"),
     license="Apache 2.0",
-    keywords="clone linux backup",
+    keywords="clone, linux, backup, smaller drive",
 )

@@ -27,7 +27,7 @@ For help on how the command works, run::
 
 For a basic setup, you could use a version of the following command::
  
-    $ weresync -C --efi-partition <partition_number> /dev/sda /dev/sdb
+    $ sudo weresync -C --efi-partition <partition_number> /dev/sda /dev/sdb
 
 =========
 Contents:

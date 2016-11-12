@@ -197,7 +197,7 @@ class DeviceManager:
             elif exit_code == 1:
                 raise weresync.exception.DeviceError(self.device, "No grep line read", None)
 
-            return [x for x in str(output, "utf-8").split(" ") if x != ""]
+            return [x for x in str(output, "utf-8").split() if x != ""]
             #Ouput has the following columns: Filesystem, Total-size, Used, Available, Use%, Mount Point
 
         finally:
@@ -651,6 +651,7 @@ class DeviceCopier:
                             source_loc = mnt_source
                         except weresync.exception.DeviceError as ex:
                             if "mount" in str(ex):
+                                LOGGER.debug("Failed to mount partition. Info:\n", exc_info=sys.exc_info())
                                 continue
                             else:
                                 raise ex
@@ -705,8 +706,6 @@ class DeviceCopier:
                                         if val.startswith("UUID"):
                                             words[0] = val.replace('"', '') #Have to remove the double quotes from blkid's output.
                                             break
-
-
                                     target_fstab.write(" ".join(words) + "\n")
             finally:
                 if source_mounted:
@@ -820,19 +819,19 @@ class DeviceCopier:
             try:
                 os.chroot(mount_loc)
                 print("Installing Grub")
-                grub_install = subprocess.Popen(["grub-install", "--recheck",
-                                                 "--efi-directory=/boot/efi" if efi_partition != None else "",
-                                                 self.target.device],
+                grub_command = ["grub-install", "--recheck", self.target.device]
+                if efi_partition != None:
+                    grub_command += "--efi-directory=/boot/efi"
+                LOGGER.debug("Grub command: " + " ".join(grub_command))
+                grub_install = subprocess.Popen(grub_command,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.PIPE)
                 install_output, install_error = grub_install.communicate()
-                print("Grub install debug info:\n" + str(install_output, "utf-8") + "\n" + str(install_error, "utf-8"))
                 if grub_install.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_error, "utf-8"))
                 print("Updating Grub")
                 grub_update = subprocess.Popen(["update-grub"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 update_output, update_error = grub_update.communicate()
-                print("Grub update debug info:\n" + str(update_output, "utf-8") + "\n" + str(update_error, "utf-8"))
                 if grub_update.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_error, "utf-8"))
 
