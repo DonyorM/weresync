@@ -425,7 +425,7 @@ class DeviceCopier:
         self.source = source if isinstance(source, DeviceManager) else DeviceManager(source)
         self.target = target if isinstance(target, DeviceManager) else DeviceManager(target)
 
-    def _transfer_gpt_target_smaller(self, difference):
+    def _transfer_gpt(self, difference):
         """Transfers the gpt partition table from the larger source drive to the smaller target drive.
 
         This method is not intended to be called from any method but the transfer partition table method below.
@@ -478,6 +478,79 @@ class DeviceCopier:
             raise weresync.exception.DeviceError(self.target.device, "Error randomizing GUIDs on target device", str(final_err, "utf-8"))
 
 
+    def _transfer_msdos(self, difference, margin=5):
+        """Copies the partition table from a msdos source drive to a target drive.
+        :param margin: The percent of original size to leave as a margin in the size of each partition. Is ignored if partition size is 0."""
+        current_proc = subprocess.Popen(["sfdisk", "-d", self.source.device], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        partition_table, current_proc_error = current_proc.communicate()
+        if current_proc.returncode != 0:
+            raise weresync.exception.DeviceError(self.source.device, "Error getting partition table backup.", str(current_proc_errror, "utf-8"))
+        partition_table = str(partition_table, "utf-8")
+        partition_listings = [x.replace(" ", "") for x in partition_table.split("\n") if x.startswith(self.source.part_mask.format(self.source.device, ""))]
+        count = 0
+        for idx, val in enumerate(partition_listings):
+            #Standard line of sfdisk -d output:
+            #mbr.img1:start=2050,size=1893,Id=83, bootable
+            listing = val.split(":")
+            pairs = {"part" : int(parse.parse(self.source.part_mask.format
+                                          (self.source.device, "{0}"),
+                                          listing[0])[0])}
+            for i in listing[1].split(","):
+                pair = i.split("=")
+                if len(pair) != 2:
+                    pairs["bootable"] = True
+                else:
+                    pairs["bootable"] = False
+                    pairs[pair[0]] = int(pair[1]) if not pair[0] == "Id" else pair[1]
+            partition_listings[idx] = pairs
+
+        partition_listings.sort(key=lambda x: x["start"])
+        move_start_back_by = 0
+        final_str = "unit: sectors\n\n"
+        current_extended_partition = None
+        extended_part_text = ""
+
+        for i in partition_listings:
+            i["start"] -= move_start_back_by
+            if current_extended_partition != None and i["part"] <= 4: #Not a logical partition
+                current_extended_partition = None
+
+            if i["Id"] == "5": #The partition is an extended partition
+                current_extended_partition = i
+                continue
+            shrink = 0
+            try:
+                part_num = i["part"]
+                drive_used = self.source.get_partition_used(part_num)
+                space = math.floor((i["size"] - drive_used) * (1 - margin/100))
+                if space > 0 and difference > 0:
+                    if space >= difference:
+                        shrink = difference
+                    else:
+                        shrink = space
+                        difference -= shrink
+
+                    move_start_back_by += shrink
+                    i["size"] -= shrink
+            except weresync.exception.DeviceError as ex:
+                LOGGER.warning("Error reading device.")
+                LOGGER.debug("Execption info:", exc_info=sys.exc_info())
+
+            if current_extended_partition != None:
+                current_extended_partition["size"] -= shrink
+
+        partition_listings.sort(key=lambda x: x["part"])
+        final_str = "unit: sectors\n\n" + "".join(["{val} : start= {start}, size= {size}, Id= {Id}{boot}\n".format(
+                val=self.target.part_mask.format(self.target.device, part_line["part"]),
+                boot=", bootable" if part_line["bootable"] else "",
+                **part_line) for part_line in partition_listings])
+
+        LOGGER.debug("Proposed partition table:\n" + final_str)
+
+        transfer_proc = subprocess.Popen(["sfdisk", "-uS", self.target.device], stderr=subprocess.PIPE, stdin=subprocess.PIPE, universal_newlines=True)
+        output, error = transfer_proc.communicate(input=final_str)
+        if transfer_proc.returncode != 0:
+            raise weresync.exception.CopyError("Could not copy partition table to target device.", error)
 
     def format_partitions(self, ignore_errors=True):
         """Goes through each partition in the source drive and formats the corresponding partition in the target drive to the same thing.
@@ -495,7 +568,6 @@ class DeviceCopier:
                 if ignore_errors:
                     logging.getLogger("weresync.device").warning("Creating filesystem for {0} encountered errors. Partition type: {1}. Skipped.".format(self.target.part_mask.format(self.target.device, i), part_type), exc_info=sys.exc_info())
                     logging.getLogger("weresync.device").debug("Error making file system.", exc_info=sys.exc_info())
-                    print("hit an error")
                 else:
                     raise exe
 
@@ -509,10 +581,12 @@ class DeviceCopier:
         target_size = self.target.get_drive_size()
 
         source_type = self.source.get_partition_table_type()
-        if source_type == "gpt":
-            self._transfer_gpt_target_smaller(source_size - target_size)
-        else:
+        if target_size < source_size and not resize:
                 raise weresync.exception.CopyError("Target device smaller than source device and resize set to false.")
+        elif source_type == "gpt":
+            self._transfer_gpt(source_size - target_size)
+        elif source_type == "msdos":
+            self._transfer_msdos(source_size - target_size)
 
         for i in self.target.get_partitions():
             if self.target.mount_point(i) != None:
