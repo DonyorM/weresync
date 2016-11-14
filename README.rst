@@ -23,6 +23,21 @@ If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily
 
     $ pip install weresync
 
+Basic Usage
+===========
+
+To see the options for the terminal command use::
+
+    $ weresync -h
+
+To copy from /dev/sda to /dev/sdb (the two drives must have the same partition scheme) use::
+
+    $ weresync /dev/sda /dev/sdb
+
+For more information, including how to copy the partition table from drive to
+another, see the `Basic Usage <https://pythonhosted.org/WereSync/weresync.html/>`_
+documentation page.
+
 Documentation
 =============
 
