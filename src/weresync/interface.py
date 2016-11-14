@@ -18,6 +18,7 @@ from weresync.exception import CopyError
 import logging
 import random
 import os
+import sys
 import argparse
 
 LOGGER = logging.getLogger(__name__)
@@ -84,43 +85,48 @@ def copy_drive(source, target,
 
 def main():
     """The entry point for the command line function. This uses argparse to parse arguments to call call :py:func:`.copy_drive` with. For help use "weresync -h" in a commandline after installation."""
-    default_part_mask="{0}{1}"
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source", help="The drive to copy data from. This drive will not be edited.")
-    parser.add_argument("target", help="The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE ERASED.")
-    parser.add_argument("-C", "--check-and-partition", action="store_true",
-                        help="Check if partitions are valid and re-partition drive to proper partitions if they are not.")
-    parser.add_argument("-s", "--source-mask",
-                        help="A string of format '{0}{1}' where {0} represents drive identifier and {1} represents partition number to point to partition block files for the source drive.")
-    parser.add_argument("-t", "--target-mask",
-                        help="A string of format '{0}{1}' where {0} represents drive identifier and {1} represents partition number to point to partition block files for the target drive.")
-    parser.add_argument("-e", "--excluded-partitions",
-                        help="A comment separated list of partitions of the source drive to apply no actions on.perated list of partitions of the source drive to apply no actions on.")
-    parser.add_argument("-b", "--break-on-error", action="store_false",
-                        help="Causes program to break whenever a partition cannot be copied, including uncopyable partitions such as swap files. Not recommended.")
-    parser.add_argument("-g", "--grub-partition", type=int,
-                        help="Partition where grub should be installed.")
-    parser.add_argument("-B", "--boot-partition", type=int,
-                        help="Partition which should be mounted on /boot")
-    parser.add_argument("-E", "--efi-partition", type=int,
-                        help="Partition which should be mounted on /boot/efi")
-    parser.add_argument("-m", "--source-mount",
-                        help="Folder where partitions from the source drive should be mounted.")
-    parser.add_argument("-M", "--target-mount",
-                        help="Folder where partitions from source drive should be mounted.")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-v", "--verbose", help="Prints expanded output.",
-                       action="store_const", dest="loglevel", const=logging.INFO)
-    group.add_argument("-d", "--debug", help="Prints large output. Mainly helpful for developers.",
-                       action="store_const", dest="loglevel", const=logging.DEBUG)
-    args = parser.parse_args()
-    logging.basicConfig(level=args.loglevel)
-    mount_points = (args.source_mount, args.target_mount)
-    excluded_partitions = [int(x) for x in args.excluded_partitions.split(",")] if args.excluded_partitions != None else []
-    source_mask = args.source_mask if args.source_mask != None else default_part_mask
-    target_mask = args.target_mask if args.target_mask else default_part_mask
-    copy_drive(args.source, args.target, args.check_and_partition,
-               source_mask, target_mask, excluded_partitions,
-               args.break_on_error, args.grub_partition,
-               args.boot_partition, args.efi_partition,
-               mount_points)
+    try:
+        default_part_mask="{0}{1}"
+        parser = argparse.ArgumentParser()
+        parser.add_argument("source", help="The drive to copy data from. This drive will not be edited.")
+        parser.add_argument("target", help="The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE ERASED.")
+        parser.add_argument("-C", "--check-and-partition", action="store_true",
+                            help="Check if partitions are valid and re-partition drive to proper partitions if they are not.")
+        parser.add_argument("-s", "--source-mask",
+                            help="A string of format '{0}{1}' where {0} represents drive identifier and {1} represents partition number to point to partition block files for the source drive.")
+        parser.add_argument("-t", "--target-mask",
+                            help="A string of format '{0}{1}' where {0} represents drive identifier and {1} represents partition number to point to partition block files for the target drive.")
+        parser.add_argument("-e", "--excluded-partitions",
+                            help="A comment separated list of partitions of the source drive to apply no actions on.perated list of partitions of the source drive to apply no actions on.")
+        parser.add_argument("-b", "--break-on-error", action="store_false",
+                            help="Causes program to break whenever a partition cannot be copied, including uncopyable partitions such as swap files. Not recommended.")
+        parser.add_argument("-g", "--grub-partition", type=int,
+                            help="Partition where grub should be installed.")
+        parser.add_argument("-B", "--boot-partition", type=int,
+                            help="Partition which should be mounted on /boot")
+        parser.add_argument("-E", "--efi-partition", type=int,
+                            help="Partition which should be mounted on /boot/efi")
+        parser.add_argument("-m", "--source-mount",
+                            help="Folder where partitions from the source drive should be mounted.")
+        parser.add_argument("-M", "--target-mount",
+                            help="Folder where partitions from source drive should be mounted.")
+        group = parser.add_mutually_exclusive_group()
+        group.add_argument("-v", "--verbose", help="Prints expanded output.",
+                           action="store_const", dest="loglevel", const=logging.INFO)
+        group.add_argument("-d", "--debug", help="Prints large output. Mainly helpful for developers.",
+                           action="store_const", dest="loglevel", const=logging.DEBUG)
+        args = parser.parse_args()
+        logging.basicConfig(level=args.loglevel)
+        mount_points = (args.source_mount, args.target_mount)
+        excluded_partitions = [int(x) for x in args.excluded_partitions.split(",")] if args.excluded_partitions != None else []
+        source_mask = args.source_mask if args.source_mask != None else default_part_mask
+        target_mask = args.target_mask if args.target_mask else default_part_mask
+        copy_drive(args.source, args.target, args.check_and_partition,
+                   source_mask, target_mask, excluded_partitions,
+                   args.break_on_error, args.grub_partition,
+                   args.boot_partition, args.efi_partition,
+                   mount_points)
+    except KeyboardInterrupt, EOFError:
+        LOGGER.info("Exiting via user keyboard interrupt.")
+        LOGGER.debug("Error:\n", exc_info=sys.exc_info())
+        sys.exit(1)
