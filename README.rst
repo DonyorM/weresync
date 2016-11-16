@@ -8,7 +8,9 @@ moon.
 
 WereSync takes a Linux hard drive and effectively clones it, but works incrementally
 so you don't have to spend so long backing up each time. Additionally, WereSync
-can clone to a smaller drive, if your data will fit on the smaller drive.
+can clone to a smaller drive, if your data will fit on the smaller drive. Because WereSync
+uses rsync to copy, it can copy a running drive,though certain parts of state may not be
+preserved.
 
 Installation
 ============
@@ -62,5 +64,4 @@ Huge thanks to the creators of:
 * `rsync <https://rsync.samba.org/>`_, whose software allowed this project to be possible.
 * `GNU Parted <https://www.gnu.org/software/parted/>`_
 * And `GPT fdisk <http://www.rodsbooks.com/gdisk/>`_
-  
-
+ 
