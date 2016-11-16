@@ -14,14 +14,36 @@
 """This modules has easy, one function interfaces with the DeviceCopier and DeviceManager."""
 
 import weresync.device as device
-from weresync.exception import CopyError
+from weresync.exception import CopyError, DeviceError
 import logging
 import random
 import os
 import sys
 import argparse
+import subprocess
 
 LOGGER = logging.getLogger(__name__)
+
+def mount_loop_device(image_file):
+    """Mounts an image file as a loop device and returns the device name of the mounted loop. This mounts on first free loop device. This accepts relative paths.
+
+    :params image_file: Path pointing to the image file to mount.
+    :returns: A string containing device identifier (/dev/sda or such)"""
+
+    image_file = os.path.abspath(os.path.expanduser(image_file))
+    free_proc = subprocess.Popen(["losetup", "-f"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    free_output, free_error = free_proc.communicate()
+    if free_proc.returncode != 0:
+        raise DeviceError(image_file, "Error finding free loop device.", str(free_output, "utf-8"))
+
+    device_name = str(free_output, "utf-8").strip()
+    mount_proc = subprocess.Popen(["losetup", device_name, image_file], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    mount_output, mount_error = mount_proc.communicate()
+    if mount_proc.returncode != 0:
+        raise DeviceError(image_file, "Error mounting image on {0}".format(device_name),
+                          str(mount_output, "utf-8"))
+    subprocess.call(["partprobe", device_name])
+    return device_name
 
 def copy_drive(source, target,
                check_if_valid_and_copy=False,
@@ -36,6 +58,8 @@ def copy_drive(source, target,
     """Uses a DeviceCopier to clone the source drive to the target drive.
 
     It is recommended to set check_if_valid_and_copy to True if the the two drives are not the same size with the same partitions.
+
+    If either source or target ends in ".img" copy_drives will assume it is an image file, and mount if accordingly.
 
     :param source: The drive identifier ("/dev/sda" or the like) of the source drive.
     :param target: The drive identifier ("/dev/sda" or the like) of the target drive.
@@ -54,34 +78,55 @@ def copy_drive(source, target,
 
     :returns: True on success and an error message or exception on failure.
     """
-    source_manager = device.DeviceManager(source, source_part_mask)
-    target_manager = device.DeviceManager(target, target_part_mask)
-    copier = device.DeviceCopier(source_manager, target_manager)
-    if check_if_valid_and_copy:
-        try:
-            print("Checking partition validity.")
-            copier.partitions_valid()
-            LOGGER.info("Drives are compatible")
-        except CopyError as ex:
-            LOGGER.warning(ex.message)
-            print("Partitions invalid!\nCopying drive partition table.")
-            LOGGER.warning("Drives are incompatible.")
-            copier.transfer_partition_table()
+    try:
+        source_loop = None
+        target_loop = None
+        if source.endswith(".img"):
+            source_loop = mount_loop_device(source)
+            source = source_loop
+            source_part_mask = "{0}p{1}"
 
-    if mount_points == None or len(mount_points) < 2 or mount_points[0] == mount_points[1]:
-        source_dir = "/tmp/" + str(random.randint(0, 100000))
-        target_dir = "/tmp/" + str(random.randint(-100000, -1))
-        os.makedirs(source_dir, exist_ok=True)
-        os.makedirs(target_dir, exist_ok=True)
-        mount_points = (source_dir, target_dir)
+        if target.endswith(".img"):
+            target_loop = mount_loop_device(target)
+            target = target_loop
+            target_part_mask = "{0}p{1}"
+            LOGGER.warning("Right now, WereSync does not properly install bootloaders on image files. You will have to handle that yourself if you want your image to be bootable.")
 
-    print("Beginning to copy files.")
-    copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures)
-    print("Finished copying files.")
-    print("Making bootable")
-    copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition)
-    print("All done, enjoy your drive!")
-    return True
+        source_manager = device.DeviceManager(source, source_part_mask)
+        target_manager = device.DeviceManager(target, target_part_mask)
+        copier = device.DeviceCopier(source_manager, target_manager)
+        if check_if_valid_and_copy:
+            try:
+                print("Checking partition validity.")
+                copier.partitions_valid()
+                LOGGER.info("Drives are compatible")
+            except CopyError as ex:
+                LOGGER.warning(ex.message)
+                print("Partitions invalid!\nCopying drive partition table.")
+                LOGGER.warning("Drives are incompatible.")
+                copier.transfer_partition_table()
+
+        if mount_points == None or len(mount_points) < 2 or mount_points[0] == mount_points[1]:
+            source_dir = "/tmp/" + str(random.randint(0, 100000))
+            target_dir = "/tmp/" + str(random.randint(-100000, -1))
+            os.makedirs(source_dir, exist_ok=True)
+            os.makedirs(target_dir, exist_ok=True)
+            mount_points = (source_dir, target_dir)
+
+        print("Beginning to copy files.")
+        copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures)
+        print("Finished copying files.")
+        print("Making bootable")
+        copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition)
+        print("All done, enjoy your drive!")
+        return True
+    finally:
+        def delete_loop(loop_name):
+            subprocess.call(["losetup", "-d", loop_name])
+        if source_loop != None:
+            delete_loop(source_loop)
+        if target_loop != None:
+            delete_loop(target_loop)
 
 def main():
     """The entry point for the command line function. This uses argparse to parse arguments to call call :py:func:`.copy_drive` with. For help use "weresync -h" in a commandline after installation."""
@@ -126,7 +171,7 @@ def main():
                    args.break_on_error, args.grub_partition,
                    args.boot_partition, args.efi_partition,
                    mount_points)
-    except KeyboardInterrupt, EOFError:
+    except (KeyboardInterrupt, EOFError):
         LOGGER.info("Exiting via user keyboard interrupt.")
         LOGGER.debug("Error:\n", exc_info=sys.exc_info())
         sys.exit(1)
