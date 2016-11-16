@@ -21,7 +21,7 @@ This will simply copy data from one partition to the another, and if the partiti
 are different, you will encounter an error. To have WereSync fix your target drives
 partitions, use the ``-C`` flag::
 
-    $ sudo weresync -C /dev/sda /dev/sdb.
+    $ sudo weresync -C /dev/sda /dev/sdb
 
 On subsequent backups, you may not want to include the -C flag, since this can
 sometimes trigger unnecessary repartitioning.
@@ -38,6 +38,21 @@ partition can trigger the mechanisms used to find the grub partition.
 
 Obviously replace the numbers with the proper values for your system. Usually the
 grub partition will be the one mounted on /
+
+Image Files
+-----------
+
+WereSync supports image files normally. If either the target or the source ends in
+".img" WereSync will automatically consider it an image file and mount it as such.
+Currently there is no way to mark files not ending in .img as image files.
+
+To create an image file on linux, use::
+
+    $ dd if=/dev/zero of=my_image.img bs=1M count=<size in MB>
+    $ sgdisk my_image.img -o
+
+The second command creates a partition table on the command, which is currently
+needed by WereSync to start analyzing a drive.
 
 In-Depth Parameter Definitions
 ============================== 
