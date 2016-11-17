@@ -62,7 +62,7 @@ Usage::
      weresync [-h] [-C] [-s SOURCE_MASK] [-t TARGET_MASK]
                 [-e EXCLUDED_PARTITIONS] [-b] [-g GRUB_PARTITION]
                 [-B BOOT_PARTITION] [-E EFI_PARTITION] [-m SOURCE_MOUNT]
-                [-M TARGET_MOUNT] [-v] [-d]
+                [-M TARGET_MOUNT] [-r RSYNC_ARGS] [-v] [-d]
                 source target
 
 .. list-table:: Parameters
@@ -132,6 +132,10 @@ Usage::
      - The directory to mount partitions from the target drive on. Cannot be the
        same as --source-mount.
      - None, randomly generated directory in the /tmp folder.
+   * - --rsync-args RSYNC_ARGS
+     - -r RSYNC_ARGS
+     - The arguments to be passed to the rsync instance used to copy files.
+     - -aAXxvH --delete
    * - --verbose
      - -v
      - Makes WereSync increase output and include more minor details.

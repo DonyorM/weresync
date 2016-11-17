@@ -38,6 +38,8 @@ for word in glob.glob("/*/mkfs.*"):
 
 SUPPORTED_PARTITION_TABLE_TYPES = ["gpt", "msdos"]
 """The names, as reported by `parted` of the partition table types supported by this program."""
+DEFAULT_RSYNC_ARGS = "-aAXxvH --delete"
+"""Default arguments passed to rsync. See rsync documentation for what they do."""
 
 class DeviceManager:
     """A class that allows various operations on a device.
@@ -713,7 +715,7 @@ class DeviceCopier:
                 if target_mounted:
                     self.source.unmount_partition(i)
 
-    def copy_files(self, mnt_source, mnt_target, excluded_partitions=[], ignore_failures=True):
+    def copy_files(self, mnt_source, mnt_target, excluded_partitions=[], ignore_failures=True, rsync_args=DEFAULT_RSYNC_ARGS):
         """Copies all files from source to target drive, doing one partition at a time. This assumes that the two drives have equivalent partition mappings, i.e. that the data on partition 1 of the source drive should be on partition 1 of the target drive.
 
         :param mnt_source: The directory to mount partitions from the source drive on.
@@ -742,7 +744,7 @@ class DeviceCopier:
 
                 LOGGER.info("Starting rsync process for partition {0}.".format(self.source.device))
 #['--exclude="' + x + '"' for x in ["/dev/*", "/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"]]
-                command_args = ["rsync", "-aAXxvH", "--delete"] + ['--exclude=' + x + '' for x in ["/dev/*", "/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found", "/home/*/.gvfs"]] + [source_loc + ("/" if not source_loc.endswith("/") else ""), target_loc]
+                command_args = ["rsync"] + shlex.split(rsync_args) + ['--exclude=' + x + '' for x in ["/dev/*", "/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found", "/home/*/.gvfs"]] + [source_loc + ("/" if not source_loc.endswith("/") else ""), target_loc]
                 print("Copying partition " + str(i))
                 LOGGER.debug("Arguments = " + " ".join(command_args))
                 proc = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

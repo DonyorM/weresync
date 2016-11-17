@@ -54,7 +54,8 @@ def copy_drive(source, target,
                grub_partition=None,
                boot_partition=None,
                efi_partition=None,
-               mount_points=None):
+               mount_points=None,
+               rsync_args=device.DEFAULT_RSYNC_ARGS):
     """Uses a DeviceCopier to clone the source drive to the target drive.
 
     It is recommended to set check_if_valid_and_copy to True if the the two drives are not the same size with the same partitions.
@@ -114,7 +115,7 @@ def copy_drive(source, target,
             mount_points = (source_dir, target_dir)
 
         print("Beginning to copy files.")
-        copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures)
+        copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures, rsync_args)
         print("Finished copying files.")
         print("Making bootable")
         copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition)
@@ -155,6 +156,9 @@ def main():
                             help="Folder where partitions from the source drive should be mounted.")
         parser.add_argument("-M", "--target-mount",
                             help="Folder where partitions from source drive should be mounted.")
+        parser.add_argument("-r", "--rsync-args",
+                            help="List of arguments passed to rsync. Do not include starting '-'. Defaults to: " + device.DEFAULT_RSYNC_ARGS,
+                            default=device.DEFAULT_RSYNC_ARGS)
         group = parser.add_mutually_exclusive_group()
         group.add_argument("-v", "--verbose", help="Prints expanded output.",
                            action="store_const", dest="loglevel", const=logging.INFO)
@@ -170,7 +174,7 @@ def main():
                    source_mask, target_mask, excluded_partitions,
                    args.break_on_error, args.grub_partition,
                    args.boot_partition, args.efi_partition,
-                   mount_points)
+                   mount_points, args.rsync_args)
     except (KeyboardInterrupt, EOFError):
         LOGGER.info("Exiting via user keyboard interrupt.")
         LOGGER.debug("Error:\n", exc_info=sys.exc_info())
