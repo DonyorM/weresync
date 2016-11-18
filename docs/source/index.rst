@@ -21,6 +21,9 @@ WereSync can easily be installed with pip. Simply use::
 Basic Usage
 -----------
 
+.. IMPORTANT::
+   WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
+
 For help on how the command works, run::
 
     $ weresync -h
@@ -44,9 +47,9 @@ Contents:
 Contributing
 ============
 
-If you would like to submit a new feature or fix a bug, please submit a Pull
-Request at the `project repository <https://github.com/donyorm/weresync/>`_. You
-can submit a bug report on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_.
+First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/README.rst/>`_.
+Then, if you would like to submit a new feature or fix a bug, please submit a Pull Request at the `project repository <https://github.com/donyorm/weresync/>`_.
+You can submit a bug report on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_.
 
 ==================
 Indices and tables

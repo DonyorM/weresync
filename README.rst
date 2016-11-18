@@ -28,6 +28,8 @@ If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily
 Basic Usage
 ===========
 
+**Note:** WereSync requires root capabilities to run because it has to access block devices.
+
 To see the options for the terminal command use::
 
     $ weresync -h
@@ -48,7 +50,9 @@ Documentation can be found on the `Python Package Index <https://pythonhosted.or
 Contributing and Bug Reports
 ============================
 
-To contribute simply clone this repository, make your changes, and submit a pull
+First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/CONTRIBUTING.rst/>`_.
+
+To contribute simply fork this repository, make your changes, and submit a pull
 request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_
 
 Licensing

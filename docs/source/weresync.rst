@@ -12,6 +12,9 @@ help flag on the weresync command::
 Basic Usage
 ===========
 
+.. IMPORTANT::
+   WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
+
 WereSync always requires a source drive and a target drive. The source drive comes
 first. WereSync requires root permissions in order to access hard drive data. So to copy from /dev/sda to /dev/sdb, use this command::
 
