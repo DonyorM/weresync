@@ -821,7 +821,7 @@ class DeviceCopier:
                 print("Installing Grub")
                 grub_command = ["grub-install", "--recheck", self.target.device]
                 if efi_partition != None:
-                    grub_command += "--efi-directory=/boot/efi"
+                    grub_command += ["--efi-directory=/boot/efi"]
                 LOGGER.debug("Grub command: " + " ".join(grub_command))
                 grub_install = subprocess.Popen(grub_command,
                                                 stdout=subprocess.PIPE,
