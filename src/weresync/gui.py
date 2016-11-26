@@ -1,40 +1,29 @@
 import weresync.device as device
+import weresync.interface as interface
+import subprocess
 import gi
+import sys
+import logging
 gi.require_version("Gtk", '3.0')
 from gi.repository import Gtk
 
+LOGGER = logging.getLogger(__name__)
 
 DEFAULT_HORIZONTAL_PADDING = 5
 DEFAULT_VERTICAL_PADDING = 3
 
 class NumberEntry(Gtk.Entry):
-    def __init__(self):
-        Gtk.Entry.__init__(self)
+    def __init__(self, allowed="", *args, **kargs):
+        """An entry that only allows numbers and certain other characters.
+
+        :param allowed: The other characters allowed by this entry in an unseperated string, ex. '., ' to allow periods, commas, and spaces. Defaults to none."""
+        Gtk.Entry.__init__(self, *args, **kargs)
+        self.allowed = allowed
         self.connect('changed', self.on_changed)
 
     def on_changed(self, *args):
         text = self.get_text()
-        self.set_text("".join([i for i in text if i in "0123456789"]))
-
-class FolderSelectEntry(Gtk.Box):
-
-    def __init__(self, parent=None, *args, **kargs):
-        super().__init__(*args, **kargs)
-        self.entry = Gtk.Entry()
-        self.browse = Gtk.Button(label="Browse")
-        self.parent = parent
-
-        self.pack_start(self.entry, True, True, 0)
-        self.pack_start(self.browse, True, True, 0)
-
-    def on_file_clicked(self, widget):
-        dialog = Gtk.FileChooserDialog("Please choose a folder.", self.parent,
-                                       Gtk.FileChooserAction.SELECT_FOLDER,
-                                       (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                                       "Select", Gtk.ResponseType.OK))
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
-            self.entry.set_text
+        self.set_text("".join([i for i in text if i in "0123456789" + self.allowed]))
 
 def set_margin(widget, right=DEFAULT_HORIZONTAL_PADDING,
                left=DEFAULT_HORIZONTAL_PADDING,
@@ -60,6 +49,14 @@ def create_help_box(parent, text, title=""):
     help.connect("activate-link", help_click)
     return help
 
+def generate_drive_list():
+    proc = subprocess.Popen(["lsblk", "-dnoNAME"], stdout=subprocess.PIPE)
+    output, _ = proc.communicate()
+    if proc.returncode != 0:
+        #TODO issue error
+        pass
+    return ["/dev/" + x.strip() for x in str(output, "utf-8").split("\n") if x.strip() != ""]
+
 class WereSyncWindow(Gtk.Window):
     def __init__(self, title="WereSync"):
         super().__init__(title=title)
@@ -69,15 +66,17 @@ class WereSyncWindow(Gtk.Window):
         self.source_label.set_hexpand(False)
         #TODO add actually drive names
         name_store = Gtk.ListStore(int, str)
-        name_store.append([1, "/dev/sda"])
-        name_store.append([2, "/dev/sdb"])
+        for idx, val in enumerate(generate_drive_list()):
+            name_store.append([idx, val])
         self.source_combo = Gtk.ComboBox.new_with_model_and_entry(name_store)
         self.source_combo.set_hexpand(True)
+        self.source_combo.set_entry_text_column(1)
         self.grid.attach(self.source_label, 1, 1, 1, 1)
         self.grid.attach_next_to(self.source_combo, self.source_label, Gtk.PositionType.RIGHT, 1, 1)
         self.target_label = Gtk.Label(label="Target Drive: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
         self.target_combo = Gtk.ComboBox.new_with_model_and_entry(name_store)
         self.target_combo.set_hexpand(True)
+        self.target_combo.set_entry_text_column(1)
         self.grid.attach_next_to(self.target_label, self.source_label, Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.target_combo, self.target_label, Gtk.PositionType.RIGHT, 1, 1)
         self.copy_partitions_button = Gtk.CheckButton(label="Copy partitions if target partitions are invalid.")
@@ -144,7 +143,7 @@ class WereSyncWindow(Gtk.Window):
         self.excluded_label = Gtk.Label(label="Excluded Partitions: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
         self.expand_grid.attach_next_to(self.excluded_label, self.target_part_mask_label,
                                         Gtk.PositionType.BOTTOM, 1, 1)
-        self.excluded_entry = Gtk.Entry()
+        self.excluded_entry = NumberEntry(allowed=", ")
         self.excluded_entry.set_hexpand(True)
         self.expand_grid.attach_next_to(self.excluded_entry, self.excluded_label,
                                         Gtk.PositionType.RIGHT, 1, 1)
@@ -195,9 +194,101 @@ class WereSyncWindow(Gtk.Window):
         set_margin(self.start)
         self.start.set_hexpand(False)
         self.grid.attach(self.start, 3, 10, 1, 1)
+        self.start.connect("clicked", self.start_pressed)
+
+    def set_expander(self, val):
+        self.expander.set_expanded(val)
+
+    def get_selected_combo(self, combo):
+        combo_iter = combo.get_active_iter()
+        if combo_iter != None:
+            model = combo.get_model()
+            row_id, val = model[combo_iter][:2]
+            return val
+        else:
+            entry = combo.get_child()
+            return entry.get_text()
+
+    def start_pressed(self, *args):
+        self.source = self.get_selected_combo(self.source_combo)
+        self.target = self.get_selected_combo(self.target_combo)
+        copy_if_invalid = self.copy_partitions_button.get_active()
+        efi_part = int(self.efi_partition_entry.get_text()) if self.efi_partition_entry.get_text().strip() != "" else None
+        bootloader_part = int(self.bootloader_partition_entry.get_text()) if self.bootloader_partition_entry.get_text() != "" else None
+        ignore_errors = self.ignore_errors.get_active()
+        self.source_part_mask = self.source_part_mask_entry.get_text()
+        self.target_part_mask = self.target_part_mask_entry.get_text()
+        exclude_text = self.excluded_entry.get_text().strip()
+        if exclude_text == "":
+            excluded_parts = None
+        else:
+            exclude_text.replace(" ", "")
+            excluded_parts = [int(x) for x in exclude_text.split(",")]
+        boot_part = int(self.boot_part_entry.get_text()) if self.boot_part_entry.get_text() != "" else None
+        rsync_args = self.rsync_label.get_text()
+        mount_points = (self.source_mount_entry.get_filename(),
+                        self.target_mount_entry.get_filename())
+        try:
+            #interface.copy_drive(source, target, source_part_mask, target_part_mask,
+            #                     excluded_partitions, ignore_errors, bootloader_part,
+            #                     boot_part, efi_part, mount_points, rsync_args)
+            self._generate_progress_grid()
+            self.remove(self.grid)
+            self.add(self.progress_grid)
+            self.show_all()
+        except Exception as ex:
+            LOGGER.debug("Full exception info:\n", exc_info=sys.exc_info())
+            dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR,
+                                       Gtk.ButtonsType.OK, "Error starting clone.")
+            dialog.format_secondary_text(str(ex))
+            dialog.run()
+            dialog.destroy()
+            return
+
+    def _generate_progress_grid(self):
+        """Generates the grid for the screen showing progress. Sets `self.progress_grid` as the grid.`"""
+
+        self.progress_grid = Gtk.Grid()
+        part_label = Gtk.Label(label="Checking partitions and copying: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
+        self.progress_grid.attach(part_label, 1, 1, 1, 1)
+        self.part_progress = Gtk.ProgressBar()
+        set_margin(self.part_progress)
+        self.progress_grid.attach_next_to(self.part_progress, part_label, Gtk.PositionType.RIGHT,
+                            1, 1)
+        source_manager = device.DeviceManager(self.source, self.source_part_mask)
+        self.copy_progresses = {}
+        partitions = source_manager.get_partitions()
+        previous_label = part_label
+        for val in partitions:
+            copy_label = Gtk.Label(label="Copying partition {0}: ".format(val), halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
+            copy_progress = Gtk.ProgressBar()
+            set_margin(copy_progress)
+            self.progress_grid.attach_next_to(copy_label, previous_label, Gtk.PositionType.BOTTOM,
+                                1, 1)
+            self.progress_grid.attach_next_to(copy_progress, copy_label, Gtk.PositionType.RIGHT,
+                                1, 1)
+            self.copy_progresses[val] = copy_progress
+            previous_label = copy_label
+        boot_label = Gtk.Label(label="Making bootable: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
+        self.progress_grid.attach_next_to(boot_label, previous_label,
+                                          Gtk.PositionType.BOTTOM, 1, 1)
+        self.boot_progress = Gtk.ProgressBar()
+        set_margin(self.boot_progress)
+        self.progress_grid.attach_next_to(self.boot_progress, boot_label,
+                                          Gtk.PositionType.RIGHT, 1, 1)
+        self.cancel_btn = Gtk.Button(label="Cancel")
+        set_margin(self.cancel_btn)
+        self.progress_grid.attach_next_to(self.cancel_btn, self.boot_progress,
+                                          Gtk.PositionType.BOTTOM, 1, 1)
 
 def start_gui():
     win = WereSyncWindow()
     win.connect("delete-event", Gtk.main_quit)
+    #This is set to expanded so it will be centered as if advanced options wer e opened
+    win.set_expander(True)
+    win.set_position(Gtk.WindowPosition.CENTER)
+    win.show_all()
+    #Then advanced options are closed so as not to be distracting
+    win.set_expander(False)
     win.show_all()
     Gtk.main()
