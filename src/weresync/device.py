@@ -823,8 +823,10 @@ class DeviceCopier:
                 print("Installing Grub")
                 grub_command = ["grub-install", "--recheck", self.target.device]
                 if efi_partition != None:
-                    grub_command += "--efi-directory=/boot/efi"
-                LOGGER.debug("Grub command: " + " ".join(grub_command))
+                    grub_command += ["--efi-directory=/boot/efi", "--target=x86_64-efi", "--bootloader-id=grub"]
+                else:
+                    grub_command += ["--target=i386-pc"]
+
                 grub_install = subprocess.Popen(grub_command,
                                                 stdout=subprocess.PIPE,
                                                 stderr=subprocess.PIPE)
@@ -832,7 +834,7 @@ class DeviceCopier:
                 if grub_install.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_error, "utf-8"))
                 print("Updating Grub")
-                grub_update = subprocess.Popen(["update-grub"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                grub_update = subprocess.Popen(["grub-mkconfig -o /boot/efi/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 update_output, update_error = grub_update.communicate()
                 if grub_update.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_error, "utf-8"))
