@@ -4,8 +4,9 @@ import subprocess
 import gi
 import sys
 import logging
+import threading
 gi.require_version("Gtk", '3.0')
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib, GObject
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ def generate_drive_list():
         #TODO issue error
         pass
     return ["/dev/" + x.strip() for x in str(output, "utf-8").split("\n") if x.strip() != ""]
+
 
 class WereSyncWindow(Gtk.Window):
     def __init__(self, title="WereSync"):
@@ -220,30 +222,62 @@ class WereSyncWindow(Gtk.Window):
         self.target_part_mask = self.target_part_mask_entry.get_text()
         exclude_text = self.excluded_entry.get_text().strip()
         if exclude_text == "":
-            excluded_parts = None
+            excluded_parts = []
         else:
             exclude_text.replace(" ", "")
             excluded_parts = [int(x) for x in exclude_text.split(",")]
         boot_part = int(self.boot_part_entry.get_text()) if self.boot_part_entry.get_text() != "" else None
-        rsync_args = self.rsync_label.get_text()
+        rsync_args = self.rsync_entry.get_text()
         mount_points = (self.source_mount_entry.get_filename(),
                         self.target_mount_entry.get_filename())
         try:
-            #interface.copy_drive(source, target, source_part_mask, target_part_mask,
-            #                     excluded_partitions, ignore_errors, bootloader_part,
-            #                     boot_part, efi_part, mount_points, rsync_args)
             self._generate_progress_grid()
             self.remove(self.grid)
             self.add(self.progress_grid)
+            def copy(callback, error):
+                try:
+                    interface.copy_drive(self.source, self.target, copy_if_invalid,
+                                         self.source_part_mask, self.target_part_mask,
+                                         excluded_parts, ignore_errors, bootloader_part,
+                                         boot_part, efi_part, mount_points, rsync_args,
+                                         lambda x: GLib.idle_add(self.part_callback, x),
+                                         lambda num, prog: GLib.idle_add(self.copy_callback, num, prog),
+                                         lambda done: GLib.idle_add(self.boot_callback, done))
+                    callback()
+                except Exception as ex:
+                    LOGGER.debug("Full exception info:\n", exc_info=sys.exc_info())
+                    error(ex)
+
+            copy_thread = threading.Thread(target=copy,
+                                           args=[lambda: GLib.idle_add(self._copy_finished),
+                                                 lambda ex: GLib.idle_add(self._show_error, ex)])
+            copy_thread.start()
             self.show_all()
         except Exception as ex:
             LOGGER.debug("Full exception info:\n", exc_info=sys.exc_info())
-            dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR,
-                                       Gtk.ButtonsType.OK, "Error starting clone.")
-            dialog.format_secondary_text(str(ex))
-            dialog.run()
-            dialog.destroy()
+            self._show_error(ex)
             return
+
+    def _show_error(self, ex):
+        """Displays an error in a message dialog."""
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR,
+                                   Gtk.ButtonsType.OK, "Error starting clone.")
+        dialog.format_secondary_text(str(ex))
+        dialog.run()
+        dialog.destroy()
+
+        #Sets back to original screen to allow regenerating any misplace parameters.
+        self.remove(self.progress_grid)
+        self.add(self.grid)
+
+    def _copy_finished(self):
+        """A callback function to be run when the the drive finishes copying."""
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO,
+                                   Gtk.ButtonsType.OK, "Clone finished!")
+        dialog.run()
+        dialog.destroy()
+        self.remove(self.progress_grid)
+        self.add(self.grid)
 
     def _generate_progress_grid(self):
         """Generates the grid for the screen showing progress. Sets `self.progress_grid` as the grid.`"""
@@ -281,7 +315,26 @@ class WereSyncWindow(Gtk.Window):
         self.progress_grid.attach_next_to(self.cancel_btn, self.boot_progress,
                                           Gtk.PositionType.BOTTOM, 1, 1)
 
+    def part_callback(self, progress):
+        LOGGER.debug("part callback. Value: {0}".format(progress) )
+        self.part_progress.set_fraction(progress)
+
+    def copy_callback(self, part, progress):
+        LOGGER.debug("copy callback value: {0}, part {1}".format(progress, part))
+        if progress < 0:
+            LOGGER.debug("Error occurred copying partition {0}. Marking complete.".format(part))
+            self.copy_progresses[part].set_fraction(1.0)
+        elif (progress >= self.copy_progresses[part].get_fraction()):
+            self.copy_progresses[part].set_fraction(progress)
+
+    def boot_callback(self, done):
+        if not done:
+            self.boot_progress.pulse()
+        else:
+            self.boot_progress.set_fraction(1.0)
+
 def start_gui():
+    GObject.threads_init()
     win = WereSyncWindow()
     win.connect("delete-event", Gtk.main_quit)
     #This is set to expanded so it will be centered as if advanced options wer e opened

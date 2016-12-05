@@ -55,7 +55,10 @@ def copy_drive(source, target,
                boot_partition=None,
                efi_partition=None,
                mount_points=None,
-               rsync_args=device.DEFAULT_RSYNC_ARGS):
+               rsync_args=device.DEFAULT_RSYNC_ARGS,
+               part_callback=None,
+               copy_callback=None,
+               boot_callback=None):
     """Uses a DeviceCopier to clone the source drive to the target drive.
 
     It is recommended to set check_if_valid_and_copy to True if the the two drives are not the same size with the same partitions.
@@ -73,6 +76,9 @@ def copy_drive(source, target,
     :param boot_partition: If not None, this is an int that represents the partition to mount at /boot when installing grub.
     :param efi_partition: If not None, this is an int that represents the partition to mount at /boot/efi when installing grub.
     :param mount_points: Expects a tuple containing two strings pointing to the directories where partitions should be mounted in case of testing. If None, the function will generate two random directories in the /tmp folder. Defaults to None.
+    :param part_callback: a function that can be called to pass the progress of the partition function. The function should expect on float between 0 and 1
+    :param copy_callback: a function that can be called to pass the progress of copying partitions. The function should expect two arguments: an integer showing partition number and a float showing progress between 0 and 1
+    :param boot_callback: a function that can be called to pass the progress of making the clone bootable. The function should expect one argument: a boolean indicating whether or not the process has finished.
 
     :raises DeviceError: If there is an error reading data from one device or another.
     :raises CopyError: If there is an error copying the data between the two devices.
@@ -100,12 +106,17 @@ def copy_drive(source, target,
             try:
                 print("Checking partition validity.")
                 copier.partitions_valid()
+                if part_callback != None:
+                    part_callback(1.0)
                 LOGGER.info("Drives are compatible")
             except CopyError as ex:
                 LOGGER.warning(ex.message)
                 print("Partitions invalid!\nCopying drive partition table.")
                 LOGGER.warning("Drives are incompatible.")
-                copier.transfer_partition_table()
+                copier.transfer_partition_table(callback=part_callback)
+            else:
+                if part_callback != None:
+                    part_callback(1.0)
 
         if mount_points == None or len(mount_points) < 2 or mount_points[0] == mount_points[1]:
             source_dir = "/tmp/" + str(random.randint(0, 100000))
@@ -115,10 +126,10 @@ def copy_drive(source, target,
             mount_points = (source_dir, target_dir)
 
         print("Beginning to copy files.")
-        copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures, rsync_args)
+        copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures, rsync_args, callback=copy_callback)
         print("Finished copying files.")
         print("Making bootable")
-        copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition)
+        copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition, boot_callback)
         print("All done, enjoy your drive!")
         return True
     finally:
