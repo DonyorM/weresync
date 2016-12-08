@@ -738,7 +738,7 @@ class DeviceCopier:
         :param mnt_target: The directory to mount partitions from the target drive on.
         :param excluded_partitions: A list containing the partitions to not copy. Defaults to empty.
         :param ignore_failures: If True, errors encountered for a partition will not cause the function to exit, but we instead cause a warning to be logged. Defaults to true.
-        :param callaback: If not None, a function with the signature ``callback(int, float)``, where the int represents partition number and float represents progress. If an error occurs, the float will be negative."""
+        :param callaback: If not None, a function with the signature ``callback(int, float)``, where the int represents partition number and float represents progress. If an error occurs, the float will be negative. If the float should pulse, it wil return True."""
 
         for i in self.source.get_partitions():
             source_mounted = False
@@ -785,10 +785,16 @@ class DeviceCopier:
                         vals = val.split()
                         if len(vals) >= 2 and vals[1].endswith("%"):
                             try:
+                                #chk = vals[5].split("=")
+                                #counts = chk[1].split("/")
+                                #if chk[0].strip() == "to-chk" and counts[0].strip() == "0":
+                                #    float_val = True
+                                #else:
                                 float_val = float(vals[1].strip("%")) / 100
                             except ValueError:
                                 continue
                             callback(i, float_val)
+
                 else:
                     run_proc()
 
@@ -911,7 +917,7 @@ class DeviceCopier:
             callback(False)
         try:
             self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
-        except DeviceError as ex:
+        except weresync.exception.DeviceError as ex:
             LOGGER.warning("Error copying fstab. Continuing anyway.")
             LOGGER.debug("", exc_info=sys.exc_info())
 

@@ -324,6 +324,8 @@ class WereSyncWindow(Gtk.Window):
         if progress < 0:
             LOGGER.debug("Error occurred copying partition {0}. Marking complete.".format(part))
             self.copy_progresses[part].set_fraction(1.0)
+        elif progress == True:
+            self.copy_progresses[part].pulse()
         elif (progress >= self.copy_progresses[part].get_fraction()):
             self.copy_progresses[part].set_fraction(progress)
 

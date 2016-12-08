@@ -76,7 +76,7 @@ def copy_drive(source, target,
     :param boot_partition: If not None, this is an int that represents the partition to mount at /boot when installing grub.
     :param efi_partition: If not None, this is an int that represents the partition to mount at /boot/efi when installing grub.
     :param mount_points: Expects a tuple containing two strings pointing to the directories where partitions should be mounted in case of testing. If None, the function will generate two random directories in the /tmp folder. Defaults to None.
-    :param part_callback: a function that can be called to pass the progress of the partition function. The function should expect on float between 0 and 1
+    :param part_callback: a function that can be called to pass the progress of the partition function. The function should expect on float between 0 and 1, a negative value denoting an error, or a boolean True to indicate the progress is indeterminate.
     :param copy_callback: a function that can be called to pass the progress of copying partitions. The function should expect two arguments: an integer showing partition number and a float showing progress between 0 and 1
     :param boot_callback: a function that can be called to pass the progress of making the clone bootable. The function should expect one argument: a boolean indicating whether or not the process has finished.
 
