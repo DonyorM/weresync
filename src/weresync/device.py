@@ -564,16 +564,28 @@ class DeviceCopier:
         if transfer_proc.returncode != 0:
             raise weresync.exception.CopyError("Could not copy partition table to target device.", error)
 
-    def format_partitions(self, ignore_errors=True):
+    def format_partitions(self, ignore_errors=True, callback=None):
         """Goes through each partition in the source drive and formats the corresponding partition in the target drive to the same thing.
 
-        :param ignore_errrors: whether or not errors (such as a file-system not recongized by mkfs) should be ignored. If True such errors will be logged. If false the exceptions will be propogated. Defaults to True."""
+        :param ignore_errrors: whether or not errors (such as a file-system not recongized by mkfs) should be ignored. If True such errors will be logged. If false the exceptions will be propogated. Defaults to True.
+        :param callback: If not None, this function should be a function that accepts a float between 0 and 1 to update the progress."""
         partitions = self.source.get_partitions()
         for i in partitions:
             try:
                 part_type = self.source.get_partition_file_system(i)
+                if callback != None:
+                    drive_size = self.target.get_drive_size()
+                    complete = 0.0
                 if part_type != None:
                     self.target.set_partition_file_system(i, part_type)
+                    if callback != None:
+                        part_size = self.target.get_partition_size(i)
+                        complete += part_size / drive_size
+                        LOGGER.debug("Callback:\nDrive Size: {0}\n"
+                                     "Part Size: {1}\n"
+                                     "Complete: {2}".format(
+                                         drive_size, part_size, complete))
+                        callback(complete)
                 else:
                     LOGGER.warning("Invalid filesystem type found. Partition {0} not formatted.".format(i))
             except weresync.exception.DeviceError as exe:
@@ -583,10 +595,11 @@ class DeviceCopier:
                 else:
                     raise exe
 
-    def transfer_partition_table(self, resize=True):
+    def transfer_partition_table(self, resize=True, callback=None):
         """Transfers the partition table from one drive to another. Afterwards, it formats the partitions on the target drive to be the same as those on the source drive.
 
-        :param resize: if true (default) then the program will attempt to resize the partition tables to fit on a smaller drive. This will not expand partition tables at any time."""
+        :param resize: if true (default) then the program will attempt to resize the partition tables to fit on a smaller drive. This will not expand partition tables at any time.
+        :param callback: If not none, a function to update progress completed. See py:func:`~.format_partitions()`"""
 
 
         source_size = self.source.get_drive_size()
@@ -604,13 +617,16 @@ class DeviceCopier:
             if self.target.mount_point(i) != None:
                 self.target.unmount_partition(i)
 
+        callback(0.3)
+
         #the block devices still won't be updated unless the following command is called.
         proc = subprocess.Popen(["partprobe", self.target.device], stdout=subprocess.PIPE, stderr = subprocess.PIPE)
         output, error = proc.communicate()
         if proc.returncode != 0:
             raise weresync.exception.DeviceError(self.target.device, "Error reloading partition mappings.", str(error, "utf-8"))
 
-        self.format_partitions()
+        #This weights the progress so 30% comes from creating partition and 70% from formatting.
+        self.format_partitions(callback=lambda prog: callback(0.3 + prog * 0.7))
 
     def partitions_valid(self):
         """Tests if the partitions on the target drive can support copying files from the source drive.
@@ -715,13 +731,14 @@ class DeviceCopier:
                 if target_mounted:
                     self.source.unmount_partition(i)
 
-    def copy_files(self, mnt_source, mnt_target, excluded_partitions=[], ignore_failures=True, rsync_args=DEFAULT_RSYNC_ARGS):
+    def copy_files(self, mnt_source, mnt_target, excluded_partitions=[], ignore_failures=True, rsync_args=DEFAULT_RSYNC_ARGS, callback=None):
         """Copies all files from source to target drive, doing one partition at a time. This assumes that the two drives have equivalent partition mappings, i.e. that the data on partition 1 of the source drive should be on partition 1 of the target drive.
 
         :param mnt_source: The directory to mount partitions from the source drive on.
         :param mnt_target: The directory to mount partitions from the target drive on.
         :param excluded_partitions: A list containing the partitions to not copy. Defaults to empty.
-        :param ignore_failures: If True, errors encountered for a partition will not cause the function to exit, but we instead cause a warning to be logged. Defaults to true."""
+        :param ignore_failures: If True, errors encountered for a partition will not cause the function to exit, but we instead cause a warning to be logged. Defaults to true.
+        :param callaback: If not None, a function with the signature ``callback(int, float)``, where the int represents partition number and float represents progress. If an error occurs, the float will be negative. If the float should pulse, it wil return True."""
 
         for i in self.source.get_partitions():
             source_mounted = False
@@ -745,15 +762,48 @@ class DeviceCopier:
                 LOGGER.info("Starting rsync process for partition {0}.".format(self.source.device))
 #['--exclude="' + x + '"' for x in ["/dev/*", "/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"]]
                 command_args = ["rsync"] + shlex.split(rsync_args) + ['--exclude=' + x + '' for x in ["/dev/*", "/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found", "/home/*/.gvfs"]] + [source_loc + ("/" if not source_loc.endswith("/") else ""), target_loc]
+                if callback != None:
+                    command_args += ["--info=progress2"]
                 print("Copying partition " + str(i))
                 LOGGER.debug("Arguments = " + " ".join(command_args))
-                proc = subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                output, error = proc.communicate()
-                print(str(error, "utf-8"))
+                def run_proc():
+                   with subprocess.Popen(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+                       buf = bytearray()
+                       while True:
+                           byt = proc.stdout.read(1);
+                           if byt == b"":
+                               break
+                           elif byt == b"\r":
+                               yield buf.decode()
+                               buf = bytearray()
+                           else:
+                               buf += byt
+
+                       LOGGER.debug("Errors for partition {0}:\n".format(i) + proc.stderr.read().decode())
+                if callback != None:
+                    for val in run_proc():
+                        vals = val.split()
+                        if len(vals) >= 2 and vals[1].endswith("%"):
+                            try:
+                                #chk = vals[5].split("=")
+                                #counts = chk[1].split("/")
+                                #if chk[0].strip() == "to-chk" and counts[0].strip() == "0":
+                                #    float_val = True
+                                #else:
+                                float_val = float(vals[1].strip("%")) / 100
+                            except ValueError:
+                                continue
+                            callback(i, float_val)
+
+                else:
+                    run_proc()
+
             except weresync.exception.DeviceError as exe:
                 if ignore_failures:
                     LOGGER.warning("Error copying data for partition {0} from device {1} to {2}.".format(i, self.source.device, self.target.device))
                     LOGGER.debug("Error info.", exc_info=sys.exc_info())
+                    if callback != None:
+                        callback(i, -1.0)
                 else:
                     raise exe
             finally:
@@ -855,7 +905,7 @@ class DeviceCopier:
                 self.target.unmount_partition(grub_partition)
         print("Finished!")
 
-    def make_bootable(self, source_mnt, target_mnt, excluded_partitions=[], grub_partition=None, boot_partition=None, efi_partition=None):
+    def make_bootable(self, source_mnt, target_mnt, excluded_partitions=[], grub_partition=None, boot_partition=None, efi_partition=None, callback=None):
         """Updates the fstab and installs the grub boot loader on a drive so it is bootable.
 
         :param source_mnt: the directory to mount partitions from the source drive on.
@@ -863,6 +913,16 @@ class DeviceCopier:
         :param excluded_partitions: a list of integers which should not be searched while looking for fstab files or boot directories.
         :param grub_partition: the partition to install grub on. WereSync will attempt to find the right partition if this is None.
         :param boot_partition: If not None, this is an int representing the partition that should be mounted on /boot.
-        :param efi_partition: If not None this is an int representing the partition that should be mounted on /boot/efi"""
-        self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
+        :param efi_partition: If not None this is an int representing the partition that should be mounted on /boot/efi
+        :param callback: A function that expects a boolean indicating whether or not the bootloader process has completed."""
+        if callback != None:
+            callback(False)
+        try:
+            self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
+        except weresync.exception.DeviceError as ex:
+            LOGGER.warning("Error copying fstab. Continuing anyway.")
+            LOGGER.debug("", exc_info=sys.exc_info())
+
         self._install_grub(target_mnt, grub_partition, boot_partition, efi_partition)
+        if callback != None:
+            callback(True)
