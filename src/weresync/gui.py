@@ -236,20 +236,20 @@ class WereSyncWindow(Gtk.Window):
             self.add(self.progress_grid)
             def copy(callback, error):
                 try:
-                    interface.copy_drive(self.source, self.target, copy_if_invalid,
+                    result = interface.copy_drive(self.source, self.target, copy_if_invalid,
                                          self.source_part_mask, self.target_part_mask,
                                          excluded_parts, ignore_errors, bootloader_part,
                                          boot_part, efi_part, mount_points, rsync_args,
                                          lambda x: GLib.idle_add(self.part_callback, x),
                                          lambda num, prog: GLib.idle_add(self.copy_callback, num, prog),
                                          lambda done: GLib.idle_add(self.boot_callback, done))
-                    callback()
+                    callback(result)
                 except Exception as ex:
                     LOGGER.debug("Full exception info:\n", exc_info=sys.exc_info())
                     error(ex)
 
             copy_thread = threading.Thread(target=copy,
-                                           args=[lambda: GLib.idle_add(self._copy_finished),
+                                           args=[lambda result: GLib.idle_add(self._copy_finished, result),
                                                  lambda ex: GLib.idle_add(self._show_error, ex)])
             copy_thread.start()
             self.show_all()
@@ -270,10 +270,14 @@ class WereSyncWindow(Gtk.Window):
         self.remove(self.progress_grid)
         self.add(self.grid)
 
-    def _copy_finished(self):
+    def _copy_finished(self, result):
         """A callback function to be run when the the drive finishes copying."""
+        text = "Clone finished!"
+        if result != True:
+            text += "\nNon fatal error occurred: " + str(result)
+
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO,
-                                   Gtk.ButtonsType.OK, "Clone finished!")
+                                   Gtk.ButtonsType.OK, text)
         dialog.run()
         dialog.destroy()
         self.remove(self.progress_grid)
@@ -320,11 +324,11 @@ class WereSyncWindow(Gtk.Window):
         self.part_progress.set_fraction(progress)
 
     def copy_callback(self, part, progress):
-        LOGGER.debug("copy callback value: {0}, part {1}".format(progress, part))
+        #LOGGER.debug("copy callback value: {0}, part {1}".format(progress, part))
         if progress < 0:
             LOGGER.debug("Error occurred copying partition {0}. Marking complete.".format(part))
             self.copy_progresses[part].set_fraction(1.0)
-        elif progress == True:
+        elif progress == True and isinstance(progress, bool):
             self.copy_progresses[part].pulse()
         elif (progress >= self.copy_progresses[part].get_fraction()):
             self.copy_progresses[part].set_fraction(progress)

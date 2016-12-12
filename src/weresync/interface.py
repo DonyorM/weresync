@@ -129,7 +129,11 @@ def copy_drive(source, target,
         copier.copy_files(mount_points[0], mount_points[1], excluded_partitions, ignore_copy_failures, rsync_args, callback=copy_callback)
         print("Finished copying files.")
         print("Making bootable")
-        copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition, boot_callback)
+        try:
+            copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition, boot_callback)
+        except DeviceError as ex:
+            print("Error making drive bootable. All files should be fine.")
+            return ex
         print("All done, enjoy your drive!")
         return True
     finally:
@@ -181,11 +185,14 @@ def main():
         excluded_partitions = [int(x) for x in args.excluded_partitions.split(",")] if args.excluded_partitions != None else []
         source_mask = args.source_mask if args.source_mask != None else default_part_mask
         target_mask = args.target_mask if args.target_mask else default_part_mask
-        copy_drive(args.source, args.target, args.check_and_partition,
+        result = copy_drive(args.source, args.target, args.check_and_partition,
                    source_mask, target_mask, excluded_partitions,
                    args.break_on_error, args.grub_partition,
                    args.boot_partition, args.efi_partition,
                    mount_points, args.rsync_args)
+        if result != True:
+            print(str(result))
+
     except (KeyboardInterrupt, EOFError):
         LOGGER.info("Exiting via user keyboard interrupt.")
         LOGGER.debug("Error:\n", exc_info=sys.exc_info())
