@@ -795,6 +795,8 @@ class DeviceCopier:
                                 continue
                             callback(i, float_val)
 
+                    LOGGER.debug("Setting to finished")
+                    callback(i, 1.0)
                 else:
                     run_proc()
 
@@ -869,7 +871,6 @@ class DeviceCopier:
 
             real_root = os.open("/", os.O_RDONLY)
             try:
-                os.chroot(mount_loc)
                 print("Installing Grub")
                 grub_command = ["grub-install", "--recheck", self.target.device]
                 if efi_partition != None:
@@ -884,7 +885,8 @@ class DeviceCopier:
                 if grub_install.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_error, "utf-8"))
                 print("Updating Grub")
-                grub_update = subprocess.Popen(["grub-mkconfig -o /boot/efi/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                os.chroot(mount_loc)
+                grub_update = subprocess.Popen(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 update_output, update_error = grub_update.communicate()
                 if grub_update.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_error, "utf-8"))
@@ -924,5 +926,6 @@ class DeviceCopier:
             LOGGER.debug("", exc_info=sys.exc_info())
 
         self._install_grub(target_mnt, grub_partition, boot_partition, efi_partition)
+
         if callback != None:
             callback(True)
