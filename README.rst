@@ -2,6 +2,10 @@
 WereSync
 ########
 
+.. image:: http://raw.githubusercontent.com/DonyorM/weresync/master/docs/source/img/weresync-logo.png
+   :align: center 
+   :alt: WereSync Logo
+
 A lone hard drive stands atop a data heap, staring at the full moon. Suddenly, it
 transforms...into a bootable clone of your drive, whirring hungrily at the digital
 moon.
@@ -22,6 +26,25 @@ WereSync can be installed using the `setup.py` file.
 If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily install WereSync with the following command::
 
     $ pip install weresync
+
+For more in-depth instructions, see the `installation documentation <https://pythonhosted.org/WereSync/installation.rst>`_.
+
+Basic Usage
+===========
+
+**Note:** WereSync requires root capabilities to run because it has to access block devices.
+
+To see the options for the terminal command use::
+
+    $ weresync -h
+
+To copy from /dev/sda to /dev/sdb (the two drives must have the same partition scheme) use::
+
+    $ weresync /dev/sda /dev/sdb
+
+For more information, including how to copy the partition table from drive to
+another, see the `Basic Usage <https://pythonhosted.org/WereSync/weresync.html/>`_
+documentation page.
 
 Documentation
 =============

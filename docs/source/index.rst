@@ -18,6 +18,8 @@ WereSync can easily be installed with pip. Simply use::
 
     $ pip install weresync
 
+For more in depth information see the `installation guide <installation.html>`_.
+
 Basic Usage
 -----------
 
@@ -36,6 +38,8 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   installation
+   gui
    weresync
    api
    issues
@@ -44,9 +48,9 @@ Contents:
 Contributing
 ============
 
-If you would like to submit a new feature or fix a bug, please submit a Pull
-Request at the `project repository <https://github.com/donyorm/weresync/>`_. You
-can submit a bug report on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_.
+First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/CONTRIBUTING.rst/>`_.
+Then, if you would like to submit a new feature or fix a bug, please submit a Pull Request at the `project repository <https://github.com/donyorm/weresync/>`_.
+You can submit a bug report on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_.
 
 ==================
 Indices and tables
