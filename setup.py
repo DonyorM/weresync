@@ -9,13 +9,16 @@ def read(fname):
 from setuptools import setup, find_packages
 setup(
     name="WereSync",
-    version="0.1",
+    version="0.2",
     package_dir={"" : "src"},
     packages=find_packages("src"),
     install_requires=["parse>=1.6.6"],
     entry_points={
         'console_scripts': [
             "weresync = weresync.interface:main"
+        ],
+        'gui_scripts': [
+            "weresync-gui = weresync.gui:start_gui"
         ]
     },
 
