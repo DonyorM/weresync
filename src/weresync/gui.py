@@ -4,6 +4,7 @@ import subprocess
 import gi
 import sys
 import logging
+import logging.handlers
 import threading
 gi.require_version("Gtk", '3.0')
 from gi.repository import Gtk, GLib, GObject
@@ -340,6 +341,8 @@ class WereSyncWindow(Gtk.Window):
             self.boot_progress.set_fraction(1.0)
 
 def start_gui():
+    logging.basicConfig(level=logging.INFO)
+    interface.start_logging_handler(LOGGER)
     GObject.threads_init()
     win = WereSyncWindow()
     win.connect("delete-event", Gtk.main_quit)

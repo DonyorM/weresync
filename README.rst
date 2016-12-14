@@ -2,6 +2,10 @@
 WereSync
 ########
 
+.. image:: http://raw.githubusercontent.com/DonyorM/weresync/master/docs/source/img/weresync-logo.png
+   :align: center 
+   :alt: WereSync Logo
+
 A lone hard drive stands atop a data heap, staring at the full moon. Suddenly, it
 transforms...into a bootable clone of your drive, whirring hungrily at the digital
 moon.
@@ -24,6 +28,8 @@ WereSync can be installed using the `setup.py` file.
 If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily install WereSync with the following command::
 
     $ pip install weresync
+
+For more in-depth instructions, see the `installation documentation <https://pythonhosted.org/WereSync/installation.rst>`_.
 
 Basic Usage
 ===========

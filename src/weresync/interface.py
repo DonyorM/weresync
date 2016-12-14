@@ -16,6 +16,7 @@
 import weresync.device as device
 from weresync.exception import CopyError, DeviceError
 import logging
+import logging.handlers
 import random
 import os
 import sys
@@ -23,6 +24,16 @@ import argparse
 import subprocess
 
 LOGGER = logging.getLogger(__name__)
+
+DEFAULT_LOG_LOCATION = "/var/log/weresync/weresync.log"
+"""The default location for WereSync's log files."""
+
+def start_logging_handler(logger, log_loc=DEFAULT_LOG_LOCATION):
+    os.makedirs(os.path.dirname(log_loc), exist_ok=True)
+    handler = logging.handlers.RotatingFileHandler(log_loc, maxBytes=2000,
+                                                   backupCount=15)
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
 
 def mount_loop_device(image_file):
     """Mounts an image file as a loop device and returns the device name of the mounted loop. This mounts on first free loop device. This accepts relative paths.
@@ -61,7 +72,7 @@ def copy_drive(source, target,
                boot_callback=None):
     """Uses a DeviceCopier to clone the source drive to the target drive.
 
-    It is recommended to set check_if_valid_and_copy to True if the the two drives are not the same size with the same partitions.
+    It is recommended to set ``check_if_valid_and_copy`` to True if the the two drives are not the same size with the same partitions.
 
     If either source or target ends in ".img" copy_drives will assume it is an image file, and mount if accordingly.
 
@@ -181,6 +192,7 @@ def main():
                            action="store_const", dest="loglevel", const=logging.DEBUG)
         args = parser.parse_args()
         logging.basicConfig(level=args.loglevel)
+        start_logging_handler(LOGGER)
         mount_points = (args.source_mount, args.target_mount)
         excluded_partitions = [int(x) for x in args.excluded_partitions.split(",")] if args.excluded_partitions != None else []
         source_mask = args.source_mask if args.source_mask != None else default_part_mask
