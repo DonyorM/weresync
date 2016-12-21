@@ -28,12 +28,22 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_LOG_LOCATION = "/var/log/weresync/weresync.log"
 """The default location for WereSync's log files."""
 
-def start_logging_handler(logger, log_loc=DEFAULT_LOG_LOCATION):
+def start_logging_handler(log_loc=DEFAULT_LOG_LOCATION, stream_level=logging.WARNING,
+                          file_level=logging.DEBUG):
     os.makedirs(os.path.dirname(log_loc), exist_ok=True)
-    handler = logging.handlers.RotatingFileHandler(log_loc, maxBytes=2000,
-                                                   backupCount=15)
-    handler.setLevel(logging.DEBUG)
+    logger = logging.getLogger()
+    logger.setLevel(file_level if file_level < stream_level else stream_level)
+    formatter = logging.Formatter("%(name)s - %(message)s")
+    handler = logging.handlers.TimedRotatingFileHandler(log_loc,
+                                                        when="D", interval=1,
+                                                        backupCount=15)
+    handler.setLevel(file_level)
+    handler.setFormatter(formatter)
     logger.addHandler(handler)
+    streamHandler = logging.StreamHandler()
+    streamHandler.setLevel(stream_level)
+    streamHandler.setFormatter(formatter)
+    logger.addHandler(streamHandler)
 
 def mount_loop_device(image_file):
     """Mounts an image file as a loop device and returns the device name of the mounted loop. This mounts on first free loop device. This accepts relative paths.
@@ -183,7 +193,7 @@ def main():
         parser.add_argument("-M", "--target-mount",
                             help="Folder where partitions from source drive should be mounted.")
         parser.add_argument("-r", "--rsync-args",
-                            help="List of arguments passed to rsync. Do not include starting '-'. Defaults to: " + device.DEFAULT_RSYNC_ARGS,
+                            help="List of arguments passed to rsync. Defaults to: " + device.DEFAULT_RSYNC_ARGS,
                             default=device.DEFAULT_RSYNC_ARGS)
         group = parser.add_mutually_exclusive_group()
         group.add_argument("-v", "--verbose", help="Prints expanded output.",
@@ -191,8 +201,11 @@ def main():
         group.add_argument("-d", "--debug", help="Prints large output. Mainly helpful for developers.",
                            action="store_const", dest="loglevel", const=logging.DEBUG)
         args = parser.parse_args()
-        logging.basicConfig(level=args.loglevel)
-        start_logging_handler(LOGGER)
+        if (args.loglevel == logging.INFO or args.loglevel == logging.DEBUG):
+            loglevel = args.loglevel
+        else:
+            loglevel = logging.WARNING
+        start_logging_handler(stream_level=loglevel)
         mount_points = (args.source_mount, args.target_mount)
         excluded_partitions = [int(x) for x in args.excluded_partitions.split(",")] if args.excluded_partitions != None else []
         source_mask = args.source_mask if args.source_mask != None else default_part_mask

@@ -93,7 +93,8 @@ class WereSyncWindow(Gtk.Window):
         self.grid.attach_next_to(self.efi_partition_entry, self.efi_partition_label, Gtk.PositionType.RIGHT, 1, 1)
         self.efi_help = create_help_box(self, "Enter the partition number of your EFI partition.\n"
                                    "So if your efi partition is found on /dev/sda1,"
-                                   " enter 1.",
+                                   " enter 1.\n"
+                                    "If you are not running a UEFI system, leave this blank.",
                                    "EFI Partition")
         self.grid.attach_next_to(self.efi_help, self.efi_partition_entry, Gtk.PositionType.RIGHT, 1, 1)
         self.bootloader_partition_label = Gtk.Label(label="Bootloader Partition Number: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
@@ -341,8 +342,10 @@ class WereSyncWindow(Gtk.Window):
             self.boot_progress.set_fraction(1.0)
 
 def start_gui():
-    logging.basicConfig(level=logging.INFO)
-    interface.start_logging_handler(LOGGER)
+    #interface.start_logging_handler(LOGGER)
+    interface.start_logging_handler()
+    #logging.basicConfig(level=logging.INFO)
+    LOGGER.info("Starting gui.")
     GObject.threads_init()
     win = WereSyncWindow()
     win.connect("delete-event", Gtk.main_quit)

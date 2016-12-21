@@ -38,7 +38,7 @@ for word in glob.glob("/*/mkfs.*"):
 
 SUPPORTED_PARTITION_TABLE_TYPES = ["gpt", "msdos"]
 """The names, as reported by `parted` of the partition table types supported by this program."""
-DEFAULT_RSYNC_ARGS = "-aAXxvH --delete"
+DEFAULT_RSYNC_ARGS = "-aAXxH --delete"
 """Default arguments passed to rsync. See rsync documentation for what they do."""
 
 class DeviceManager:
@@ -493,6 +493,9 @@ class DeviceCopier:
     def _transfer_msdos(self, difference, margin=5):
         """Copies the partition table from a msdos source drive to a target drive.
         :param margin: The percent of original size to leave as a margin in the size of each partition. Is ignored if partition size is 0."""
+        for i in self.target.get_partitions():
+            if self.target.mount_point(i) != None:
+                self.target.unmount_partition(i)
         current_proc = subprocess.Popen(["sfdisk", "-d", self.source.device], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         partition_table, current_proc_error = current_proc.communicate()
         if current_proc.returncode != 0:
@@ -503,6 +506,7 @@ class DeviceCopier:
         for idx, val in enumerate(partition_listings):
             #Standard line of sfdisk -d output:
             #mbr.img1:start=2050,size=1893,Id=83, bootable
+            #a new version would have "type" instead of "Id"
             listing = val.split(":")
             pairs = {"part" : int(parse.parse(self.source.part_mask.format
                                           (self.source.device, "{0}"),
@@ -513,7 +517,13 @@ class DeviceCopier:
                     pairs["bootable"] = True
                 else:
                     pairs["bootable"] = False
-                    pairs[pair[0]] = int(pair[1]) if not pair[0] == "Id" else pair[1]
+                    if (pair[0] == "Id" or pair[0] == "type"):
+                        #Newer versions of sfdisk use type instead of Id
+                        #This test allows both versions to be supported
+                        pairs["type"] = pair[1]
+                        id_key = pair[0] #needed to create the right lines in the final product
+                    else:
+                        pairs[pair[0]] = int(pair[1])
             partition_listings[idx] = pairs
 
         partition_listings.sort(key=lambda x: x["start"])
@@ -527,7 +537,7 @@ class DeviceCopier:
             if current_extended_partition != None and i["part"] <= 4: #Not a logical partition
                 current_extended_partition = None
 
-            if i["Id"] == "5": #The partition is an extended partition
+            if i["type"] == "5": #The partition is an extended partition
                 current_extended_partition = i
                 continue
             shrink = 0
@@ -552,13 +562,19 @@ class DeviceCopier:
                 current_extended_partition["size"] -= shrink
 
         partition_listings.sort(key=lambda x: x["part"])
-        final_str = "unit: sectors\n\n" + "".join(["{val} : start= {start}, size= {size}, Id= {Id}{boot}\n".format(
+        #We don't know what the name of the id key is, so we have to concaterate it in.
+        final_str = "unit: sectors\n\n" + "".join(["{val} : start= {start}, size= {size}, {type_key}= {type}{boot}\n".format(
                 val=self.target.part_mask.format(self.target.device, part_line["part"]),
                 boot=", bootable" if part_line["bootable"] else "",
+                type_key=id_key,
                 **part_line) for part_line in partition_listings])
 
         LOGGER.debug("Proposed partition table:\n" + final_str)
 
+        table_proc = subprocess.Popen(["fdisk", self.target.device], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.PIPE, universal_newlines=True)
+        output, error = table_proc.communicate(input="o\nw\nq")
+        if table_proc.returncode != 0:
+            raise weresync.exception.CopyError("Could not create new partition table on target device", output)
         transfer_proc = subprocess.Popen(["sfdisk", "--force", self.target.device], stderr=subprocess.PIPE, stdin=subprocess.PIPE, universal_newlines=True)
         output, error = transfer_proc.communicate(input=final_str)
         if transfer_proc.returncode != 0:
@@ -617,7 +633,8 @@ class DeviceCopier:
             if self.target.mount_point(i) != None:
                 self.target.unmount_partition(i)
 
-        callback(0.3)
+        if callback != None:
+            callback(0.3)
 
         #the block devices still won't be updated unless the following command is called.
         proc = subprocess.Popen(["partprobe", self.target.device], stdout=subprocess.PIPE, stderr = subprocess.PIPE)
@@ -626,7 +643,10 @@ class DeviceCopier:
             raise weresync.exception.DeviceError(self.target.device, "Error reloading partition mappings.", str(error, "utf-8"))
 
         #This weights the progress so 30% comes from creating partition and 70% from formatting.
-        self.format_partitions(callback=lambda prog: callback(0.3 + prog * 0.7))
+        self.format_partitions(callback=lambda prog: callback(0.3 + prog * 0.7) if callback != None else None)
+        #If it's done, it's done
+        if callback != None:
+            callback(1.0)
 
     def partitions_valid(self):
         """Tests if the partitions on the target drive can support copying files from the source drive.
@@ -798,7 +818,9 @@ class DeviceCopier:
                     LOGGER.debug("Setting to finished")
                     callback(i, 1.0)
                 else:
-                    run_proc()
+                    for val in run_proc():
+                        #If you don't loop through the generator values, the rsync process doesn't run properly.
+                        pass
 
             except weresync.exception.DeviceError as exe:
                 if ignore_failures:
@@ -871,6 +893,13 @@ class DeviceCopier:
 
             real_root = os.open("/", os.O_RDONLY)
             try:
+                print("Updating Grub")
+                os.chroot(mount_loc)
+                grub_update = subprocess.Popen(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                update_output, update_error = grub_update.communicate()
+                if grub_update.returncode != 0:
+                    raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_error, "utf-8"))
+
                 print("Installing Grub")
                 grub_command = ["grub-install", "--recheck", self.target.device]
                 if efi_partition != None:
@@ -885,12 +914,6 @@ class DeviceCopier:
                 install_output, install_error = grub_install.communicate()
                 if grub_install.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_error, "utf-8"))
-                print("Updating Grub")
-                os.chroot(mount_loc)
-                grub_update = subprocess.Popen(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                update_output, update_error = grub_update.communicate()
-                if grub_update.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_error, "utf-8"))
 
                 print("Cleaning up.")
             finally:
