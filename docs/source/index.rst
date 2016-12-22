@@ -6,6 +6,9 @@
 WereSync
 ========
 
+.. image:: img/weresync-logo.png
+   :align: center
+
 Making your backup drives into were-drives, transforming them into clones at will.
 
 WereSync incrementally backups up hard drives using rsync. Backups can be run while
@@ -26,7 +29,11 @@ Basic Usage
 .. IMPORTANT::
    WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
 
-For help on how the command works, run::
+To start the gui use::
+
+    $ sudo weresync-gui
+
+For help on how the terminal command works, run::
 
     $ weresync -h
 
