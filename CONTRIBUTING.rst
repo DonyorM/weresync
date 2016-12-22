@@ -11,7 +11,7 @@ Please feel free to report any issues or bugs you encounter while using WereSync
 * Version of WereSync
 * Version and distribution of Linux system
 * Python version
-* All output of WereSync, please run the command again with the -d flag as well.
+* The log file, placed in /var/log/weresync by default.
 * Other relevant details, such as whether or not images were used.
 
 Code Contribution
@@ -30,6 +30,6 @@ Tests
 -----
 
 WereSync's code is hard to unit test in many ways, because block devices are
-complex and difficult to mock. However, if your code can be tested, possibly using mocks, you should add tests to your commit. Take a look at the code in the commit directory to see some examples. However, a 100% test coverage is not expected.
+complex and difficult to mock. However, if your code can be tested, possibly using mocks, you should add tests to your commit. Take a look at the code in the tests directory to see some examples. However, a 100% test coverage is not expected.
 
 

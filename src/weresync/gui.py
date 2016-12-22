@@ -3,6 +3,7 @@ import weresync.interface as interface
 import subprocess
 import gi
 import sys
+import os
 import logging
 import logging.handlers
 import threading
@@ -59,10 +60,15 @@ def generate_drive_list():
         pass
     return ["/dev/" + x.strip() for x in str(output, "utf-8").split("\n") if x.strip() != ""]
 
+def get_resource(resource):
+    dir = os.path.dirname(__file__)
+    rel_resource_path = os.path.join(dir, "..", "resources", resource)
+    return os.path.abspath(rel_resource_path)
 
 class WereSyncWindow(Gtk.Window):
     def __init__(self, title="WereSync"):
         super().__init__(title=title)
+        self.set_icon_from_file(get_resource("weresync.svg"))
         self.grid = Gtk.Grid()
         self.add(self.grid)
         self.source_label = Gtk.Label(label="Source Drive: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
