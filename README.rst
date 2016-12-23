@@ -49,7 +49,7 @@ To copy from /dev/sda to /dev/sdb (the two drives must have the same partition s
     $ sudo weresync /dev/sda /dev/sdb
 
 For more information, including how to copy the partition table from drive to
-another, see the `Basic Usage <https://pythonhosted.org/WereSync/weresync.html/>`_
+another, see the `Basic Usage <https://pythonhosted.org/WereSync/weresync.html>`_
 documentation page.
 
 Documentation
@@ -60,7 +60,7 @@ Documentation can be found on the `Python Package Index <https://pythonhosted.or
 Contributing and Bug Reports
 ============================
 
-First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/CONTRIBUTING.rst/>`_.
+First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/CONTRIBUTING.rst>`_.
 
 To contribute simply fork this repository, make your changes, and submit a pull
 request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_
@@ -68,7 +68,7 @@ request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/
 Licensing
 =========
 
-This project is licensed under the `Apache 2.0 License <https://www.apache.org/licenses/LICENSE-2.0/>`_. Licensing is in the **LICENSE.txt** file in this directory.
+This project is licensed under the `Apache 2.0 License <https://www.apache.org/licenses/LICENSE-2.0>`_. Licensing is in the **LICENSE.txt** file in this directory.
 
 Acknowledgments
 ===============
