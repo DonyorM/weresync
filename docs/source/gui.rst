@@ -16,6 +16,8 @@ To start the gui run the command::
 .. IMPORTANT::
    WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
 
+.. image:: img/gui-example.png
+   :align: left
 
 Dependencies
 ============
