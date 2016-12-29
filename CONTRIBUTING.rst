@@ -6,7 +6,7 @@ Contributing
 Bug Reports and Issues
 ======================
 
-Please feel free to report any issues or bugs you encounter while using WereSync. When you submit an issue, be sure to include the following in your report:
+Please feel free to report any issues or bugs you encounter while using WereSync. Each issue is very much appreciated. When you submit an issue, be sure to include the following in your report:
 
 * Version of WereSync
 * Version and distribution of Linux system
@@ -14,10 +14,21 @@ Please feel free to report any issues or bugs you encounter while using WereSync
 * The log file, placed in /var/log/weresync by default.
 * Other relevant details, such as whether or not images were used.
 
-Code Contribution
+Project Contribution
 =================
 
-Thanks for wanting to join us! To contribute to WereSync first fork this repository, then clone to your own system. You can switch to the develop branch, make your adjustments, and then create a pull request.
+Thanks for wanting to join us! We welcome contributions of all types including code, documentation updates, and other process.
+
+Basic Process
+-------------
+
+1. `Fork <https://help.github.com/articles/fork-a-repo/>`_ the project on GitHub
+2. Clone your fork with `git clone <repository>`
+3. Add your code to your fork. We recommend creating a new branch when you start your own code.
+4. Tidy up your commits. WereSync accepts pull requests with multiple commits, but please make sure each commit deals with a significant part of the project. If you have a commit just fixing typos, squash that one into a more major commit. For information on how to do that see `here <http://gitready.com/advanced/2009/02/10/squashing-commits-with-rebase.html>`_.
+5. Submit a `pull request <https://github.com/DonyorM/weresync/pulls>`_ merging your code into the `develop <https://github.com/DonyorM/weresync/tree/develop>`_ branch of WereSync
+   * If your code is the first step on a new major feature, you could ask to create a new branch, allowing others to help you without affecting the main branch. Generally this is not required.
+6. Keep an eye on your pull requests and respond to any requests for changes or updates.
 
 Branches
 --------
@@ -32,4 +43,8 @@ Tests
 WereSync's code is hard to unit test in many ways, because block devices are
 complex and difficult to mock. However, if your code can be tested, possibly using mocks, you should add tests to your commit. Take a look at the code in the tests directory to see some examples. However, a 100% test coverage is not expected.
 
+Style
+-----
 
+WereSync does not currently have a official style guide. Generally follow good
+Python style practices and do what the rest of the code base does.
