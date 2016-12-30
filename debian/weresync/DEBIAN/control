@@ -1,0 +1,16 @@
+Package: weresync
+Version: 0.2-1
+Architecture: all
+Maintainer: Daniel Manila <dmv@springwater7.org>
+Installed-Size: 13
+Depends: python-parse, gdisk, parted, rsync
+Recommends: python-gi
+Section: admin
+Priority: optional
+Homepage: https://github.com/DonyorM/weresync
+Description: Incrementally clones drives (Python 3)
+ Using rsync WereSync clones drives incrementally.
+ It can clone a running drive or to a smaller drive.
+ WereSync includes a simple GUI, making cloning a one button-click process.
+ .
+ This package installs the library for Python 3.

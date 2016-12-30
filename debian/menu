@@ -1,0 +1,2 @@
+?package(weresync):needs="X11" section="Applications/File Management"\
+  title="weresync" command="gksudo /usr/bin/weresync"

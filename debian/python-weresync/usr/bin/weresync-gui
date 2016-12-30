@@ -1,0 +1,10 @@
+#!/usr/bin/python
+# EASY-INSTALL-ENTRY-SCRIPT: 'WereSync==0.2.1','gui_scripts','weresync-gui'
+__requires__ = 'WereSync==0.2.1'
+import sys
+from pkg_resources import load_entry_point
+
+if __name__ == '__main__':
+    sys.exit(
+        load_entry_point('WereSync==0.2.1', 'gui_scripts', 'weresync-gui')()
+    )

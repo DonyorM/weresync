@@ -1,0 +1,13 @@
+Package: weresync-doc
+Source: weresync
+Version: 0.2-1
+Architecture: all
+Maintainer: Daniel Manila <dmv@springwater7.org>
+Installed-Size: 9
+Section: doc
+Priority: optional
+Homepage: https://github.com/DonyorM/weresync
+Description: Documentation for the WereSync package(documentation)
+ Sphinx documentation for weresync.
+ .
+ This is the common documentation package.

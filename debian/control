@@ -1,0 +1,32 @@
+Source: weresync
+Section: admin
+Priority: optional
+Maintainer: Daniel Manila <dmv@springwater7.org>
+Build-Depends: debhelper (>=9),python3-setuptools,python3-all,python-all,python-docutils,python-sphinx
+Standards-Version: 3.9.6
+Homepage: https://github.com/DonyorM/weresync
+X-Python3-Version: >= 3.4
+#Vcs-Git: git://anonscm.debian.org/collab-maint/weresync.git
+#Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/weresync.git
+
+Package: weresync
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends},python-parse,gdisk,parted,rsync
+Recommends: python-gi
+Description: Incrementally clones drives (Python 3)
+ Using rsync WereSync clones drives incrementally.
+ It can clone a running drive or to a smaller drive.
+ WereSync includes a simple GUI, making cloning a one button-click process.
+ .
+ This package installs the library for Python 3.
+X-Python3-Version: >= 3.4
+
+Package: weresync-doc
+Architecture: all
+Section: doc
+Depends: ${sphinxdoc:Depends}, ${misc:Depends}
+Description: Documentation for the WereSync package(documentation)
+ Sphinx documentation for weresync.
+ .
+ This is the common documentation package.
+X-Python3-Version: >= 3.4
