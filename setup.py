@@ -11,7 +11,7 @@ setup(
     name="WereSync",
     version="0.2.1",
     package_dir={"" : "src"},
-    packages=find_packages("src", "src/resources"),
+    packages=find_packages("src"),
     install_requires=["parse>=1.6.6"],
     entry_points={
         'console_scripts': [
