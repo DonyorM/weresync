@@ -348,6 +348,18 @@ class WereSyncWindow(Gtk.Window):
             self.boot_progress.set_fraction(1.0)
 
 def start_gui():
+    try:
+        interface.check_python_version()
+    except InvalidVersionError as ex:
+        print(ex)
+        #This might not work, if the user doesn't have a setup that support PyGObject, but it's worth a shot.
+        dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR,
+                                   Gtk.ButtonsType.OK, "Error starting WereSync.")
+        dialog.format_secondary_text(str(ex))
+        dialog.run()
+        dialog.destroy()
+        sys.exit(1)
+
     #interface.start_logging_handler(LOGGER)
     interface.start_logging_handler()
     #logging.basicConfig(level=logging.INFO)

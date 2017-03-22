@@ -14,7 +14,7 @@
 """This modules has easy, one function interfaces with the DeviceCopier and DeviceManager."""
 
 import weresync.device as device
-from weresync.exception import CopyError, DeviceError
+from weresync.exception import CopyError, DeviceError, InvalidVersionError
 import logging
 import logging.handlers
 import random
@@ -27,6 +27,16 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_LOG_LOCATION = "/var/log/weresync/weresync.log"
 """The default location for WereSync's log files."""
+
+def check_python_version():
+    """This method tests if the running version of python supports WereSync.
+    If it does not, it raises a InvalidVersionException"""
+    try:
+        assert sys.version_info > (3,0)
+    except AssertionError:
+        info = sys.version_info
+        raise InvalidVersionError("Python version {major}.{minor} not supported. WereSync requires at least Python 3.0\n"
+                                  "Considering installing WereSync with the pip3 command to insure it installs with Python3.".format(major=info[0], minor=info[1]))
 
 def start_logging_handler(log_loc=DEFAULT_LOG_LOCATION, stream_level=logging.WARNING,
                           file_level=logging.DEBUG):
@@ -167,6 +177,12 @@ def copy_drive(source, target,
 
 def main():
     """The entry point for the command line function. This uses argparse to parse arguments to call call :py:func:`.copy_drive` with. For help use "weresync -h" in a commandline after installation."""
+    try:
+        check_python_version()
+    except InvalidVersionError as ex:
+        print(ex)
+        sys.exit(1)
+
     try:
         default_part_mask="{0}{1}"
         parser = argparse.ArgumentParser()
