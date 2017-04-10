@@ -87,10 +87,13 @@ def copy_drive(source, target,
                efi_partition=None,
                mount_points=None,
                rsync_args=device.DEFAULT_RSYNC_ARGS,
+               lvm=False,
                part_callback=None,
                copy_callback=None,
                boot_callback=None):
     """Uses a DeviceCopier to clone the source drive to the target drive.
+
+    **Note:** if using LVM, any uses of "partition" in the documentation actually refer to logical volumes.
 
     It is recommended to set ``check_if_valid_and_copy`` to True if the the two drives are not the same size with the same partitions.
 
@@ -107,6 +110,7 @@ def copy_drive(source, target,
     :param boot_partition: If not None, this is an int that represents the partition to mount at /boot when installing grub.
     :param efi_partition: If not None, this is an int that represents the partition to mount at /boot/efi when installing grub.
     :param mount_points: Expects a tuple containing two strings pointing to the directories where partitions should be mounted in case of testing. If None, the function will generate two random directories in the /tmp folder. Defaults to None.
+    :param lvm: If True, WereSync treats both target and source as Logical Volume Groups. Defaults to false.
     :param part_callback: a function that can be called to pass the progress of the partition function. The function should expect on float between 0 and 1, a negative value denoting an error, or a boolean True to indicate the progress is indeterminate.
     :param copy_callback: a function that can be called to pass the progress of copying partitions. The function should expect two arguments: an integer showing partition number and a float showing progress between 0 and 1
     :param boot_callback: a function that can be called to pass the progress of making the clone bootable. The function should expect one argument: a boolean indicating whether or not the process has finished.
@@ -130,8 +134,18 @@ def copy_drive(source, target,
             target_part_mask = "{0}p{1}"
             LOGGER.warning("Right now, WereSync does not properly install bootloaders on image files. You will have to handle that yourself if you want your image to be bootable.")
 
-        source_manager = device.DeviceManager(source, source_part_mask)
-        target_manager = device.DeviceManager(target, target_part_mask)
+        if lvm:
+            managerType = device.LVMDeviceManager
+            if source_part_mask == "{0}{1}":
+                #LVMDeviceManager strips a trailing slash off of a VG name
+                source_part_mask = "{0}/{1}"
+            if target_part_mask == "{0}{1}":
+                target_part_mask = "{0}/{1}"
+
+
+
+        source_manager = managerType(source, source_part_mask)
+        target_manager = managerType(target, target_part_mask)
         copier = device.DeviceCopier(source_manager, target_manager)
         if check_if_valid_and_copy:
             try:
@@ -211,6 +225,9 @@ def main():
         parser.add_argument("-r", "--rsync-args",
                             help="List of arguments passed to rsync. Defaults to: " + device.DEFAULT_RSYNC_ARGS,
                             default=device.DEFAULT_RSYNC_ARGS)
+        parser.add_argument("-l", "--lvm",
+                            help="Considers both source and target to be Logical Volume Groups",
+                            action="store_true")
         group = parser.add_mutually_exclusive_group()
         group.add_argument("-v", "--verbose", help="Prints expanded output.",
                            action="store_const", dest="loglevel", const=logging.INFO)
@@ -227,10 +244,10 @@ def main():
         source_mask = args.source_mask if args.source_mask != None else default_part_mask
         target_mask = args.target_mask if args.target_mask else default_part_mask
         result = copy_drive(args.source, args.target, args.check_and_partition,
-                   source_mask, target_mask, excluded_partitions,
-                   args.break_on_error, args.grub_partition,
-                   args.boot_partition, args.efi_partition,
-                   mount_points, args.rsync_args)
+                            source_mask, target_mask, excluded_partitions,
+                            args.break_on_error, args.grub_partition,
+                            args.boot_partition, args.efi_partition,
+                            mount_points, args.rsync_args, lvm=args.lvm)
         if result != True:
             print(str(result))
 

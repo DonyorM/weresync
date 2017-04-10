@@ -82,7 +82,7 @@ class DeviceManager:
         return partitions
 
     def mount_point(self, partition_num):
-        """Returns an absolute path to the mountpoint of the specific partition.
+        """Returnds an absolute path to the mountpoint of the specific partition.
         Returns None if no mountpoint found (probably because partion not mounted).
 
         :param partition_num: The partition of whose mount to find."""
@@ -121,8 +121,6 @@ class DeviceManager:
         :param partition_num: the number of the partition to unmount.
         :raises: :py:class:`~weresync.exception.DeviceError` if the partition is busy or the partition is not mounted.
         """
-
-
         unmount_proc = subprocess.Popen(["umount", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, err = unmount_proc.communicate()
         exit_code = unmount_proc.returncode
@@ -191,6 +189,7 @@ class DeviceManager:
                 mounted_here = True
 
             proc_formal = subprocess.Popen(["df", "--block-size=512"], stdout=subprocess.PIPE)
+            print(self.part_mask.format(self.device, partition_num))
             proc = subprocess.Popen(["grep", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=proc_formal.stdout)
             output, error = proc.communicate()
             exit_code = proc.returncode
@@ -424,6 +423,111 @@ class DeviceManager:
             if mnt_point != None:
                 self.mount_partition(part_num, mnt_point)
 
+class LVMDeviceManager(DeviceManager):
+    """This is an extension of the DeviceManager class which handles Logical
+    Volume groups. All method names referring to \"partition\" in fact refer
+    to logical volumes, but the names remain the same for compatibility reasons.
+
+    :param source: The name of the logical volume group."""
+    def __init__(self, device, partition_mask="{0}/{1}"):
+        self.name = device.split("/")[-1]
+        self.device = device if not device.endswith("/") else device[0:-1]
+        self.device = self.device if self.device.startswith("/dev") else "/dev/" + self.device
+        self.part_mask = partition_mask
+
+    def get_partitions(self):
+        """Returns the names of the logical volumes in the group, as a list of strings."""
+        proc = subprocess.Popen(["lvs", "--separator", ":"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output, error = proc.communicate()
+        if proc.returncode != 0:
+            raise weresync.exception.DeviceError(self.device, "Error finding logical volumes.", str(output, "utf-8"))
+        lines = [x.strip().split(":") for x in str(output, "utf-8").split("\n") if x.strip() != ""]
+        LOGGER.debug(str(lines))
+        return [x[0] for x in lines[1:] if x[1] == self.name]
+
+    def get_partition_table_type(self):
+        return "lvm"
+
+    def _get_drive_size_generic(self, units):
+        """Gets the size of a logical volume group in generic units.
+
+        :param units: An indicator for units as defined by the *vgs* command. Generall "b" or "s"."""
+        proc = subprocess.Popen(["vgs", "--units", units, "-o", "size", "--noheadings", self.device], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output, error = proc.communicate()
+        if proc.returncode != 0:
+            raise weresync.exception.DeviceError(self.device, "Error finding logical volume size.", str(output, "utf-8"))
+        return int(str(output, "utf-8").strip()[0:-1]) #The last character of the output is a "B" or an "S" and should be removed
+
+    def get_drive_size_bytes(self):
+        """Returns the of a logical volume group in bytes."""
+        return self._get_drive_size_generic("b")
+
+    def get_drive_size(self):
+        """Normally this function returns the drive size in sectors.
+
+        :returns: an integer representing the size of the drive in sectors
+        :raises DeviceError: if the command returns a non-zero return code"""
+        return self._get_drive_size_generic("s")
+
+    def get_partition_size(self, partition_name):
+        """Gets the size, in sectors, of a logical volume.
+
+        :param partition_name: the name of the logical volume whose size to get.
+
+        :returns: an int representing the number of bytes on the logical volume.
+        :raise DeviceERror: if the commands for getting the size of the partition fail to return a 0 return code."""
+
+        proc = subprocess.Popen(["lvdisplay", "-c", self.part_mask.format(self.device, partition_name)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output, error = proc.communicate()
+        if proc.returncode != 0:
+            raise weresync.exception.DeviceError(self.device, "Error getting logical volume size.", str(output, "utf-8"))
+
+        return int(str(output, "utf-8").split(":")[6])
+
+    def get_partition_code(self, partition_num):
+        """Not valid for LVM drives.
+
+        :raises UnsupportedDeviceError:"""
+
+        raise weresync.exception.UnsupportedDeviceError("Partition codes not applicable to lvm drives.")
+
+    def _get_general_info(self, partition_num):
+        """Same method as the _get_general_info method for the main DeviceManager class."""
+        #This switching masks around is necessary because df sees block devices in mapper (ex. /dev/mapper/example--vg) rather than normal (ex. /dev/example-vg),
+        old_name = self.device
+        self.device = self.device[self.device.rindex("/")+1:len(self.device)]
+        self.device = self.device.replace("-", "--")
+        old_mask = self.part_mask
+        self.part_mask = "/dev/mapper/{0}-{1}"
+        result = super()._get_general_info(partition_num)
+        self.device = old_name
+        self.part_mask = old_mask
+        return result
+
+    #TODO make this work if needed with LVM drives
+    def get_partition_alignment(self):
+        """Not valid for LVM drives.
+
+        :raises UnsupportedDeviceError:"""
+
+        raise weresync.exception.UnsupportedDeviceError("Partition codes not applicable to lvm drives.")
+
+    def get_empty_space(self):
+        """Gets the amount of empty space left in the logical volume group. Due to
+        a lack of strict ordering in lvm, this is considered to be the total space,
+        not simply the space after the last partition.
+
+        :returns: An integer representing the number of sectors free in the volume group.
+        :raises DeviceError: If the command has a non-zero return value."""
+        proc = subprocess.Popen(["vgs", "--units", "s", "-o", "free", "--noheadings", self.device],
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output, error = proc.communicate()
+        if proc.returncode != 0:
+            raise weresync.exception.DeviceError(self.device, "Error reading free space in volume group.", str(output, "utf-8"))
+
+        result = str(output, "utf-8").strip()[0:-1] #The final character in the results is a unit, in this case "S"
+        return int(result)
+
 class DeviceCopier:
     """DeviceCopiers transfer data from a source drive to a target drive.
 
@@ -457,8 +561,8 @@ class DeviceCopier:
             except weresync.exception.DeviceError:
                 part_used = drive_size
             space = int(part_alignment * math.floor((drive_size - part_used) / part_alignment))
+            part_size = None
             if space > 0 and difference > 0:
-                part_size = None
                 #if the amount of space on the drive is bigger than the difference between the drives
                 if space > difference:
                     part_size = int(part_alignment * math.ceil((drive_size - difference) / part_alignment))
@@ -580,6 +684,46 @@ class DeviceCopier:
         if transfer_proc.returncode != 0:
             raise weresync.exception.CopyError("Could not copy partition table to target device.", error)
 
+    def _transfer_lvm(self, difference):
+        #In general, partitions and logical volumes (lvs) are synonymous in this method
+        for j in self.target.get_partitions():
+            if self.target.mount_point(j) != None:
+                self.target.unmount(j)
+            LOGGER.debug("Deleting " + j)
+            remove_proc = subprocess.Popen(["lvremove", "-f", self.target.device + "/" + j], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            output, error = remove_proc.communicate()
+            if remove_proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.target.device, "Error removing logical volume from target.", str(output, "utf-8"))
+
+        lvs = self.source.get_partitions()
+        difference -= self.source.get_empty_space()
+        commands = []
+        for i in lvs:
+            drive_size = self.source.get_partition_size(i)
+            try:
+                part_used = self.source.get_partition_used(i)
+            except weresync.exception.DeviceError:
+                part_used = drive_size
+
+            space = drive_size - part_used
+            if space > 0 and difference > 0:
+                part_size = None
+                if space > difference:
+                    part_size = drive_size - difference
+                else:
+                    part_size = part_used
+                    difference -= space
+            else:
+                part_size = drive_size
+
+            command = ["lvcreate", "--size", str(part_size) + "S", "-n", i, self.target.device]
+            LOGGER.debug("lvcreate command: " + str(command))
+            copy_proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            output, error = copy_proc.communicate()
+            LOGGER.debug("Output for " + i + ": " + str(output, "utf-8"))
+            if copy_proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.target.device, "Error creating new logical volume.", str(output, "utf-8"))
+
     def format_partitions(self, ignore_errors=True, callback=None):
         """Goes through each partition in the source drive and formats the corresponding partition in the target drive to the same thing.
 
@@ -628,6 +772,8 @@ class DeviceCopier:
             self._transfer_gpt(source_size - target_size)
         elif source_type == "msdos":
             self._transfer_msdos(source_size - target_size)
+        elif source_type == "lvm":
+            self._transfer_lvm(source_size - target_size)
 
         for i in self.target.get_partitions():
             if self.target.mount_point(i) != None:
@@ -637,10 +783,12 @@ class DeviceCopier:
             callback(0.3)
 
         #the block devices still won't be updated unless the following command is called.
-        proc = subprocess.Popen(["partprobe", self.target.device], stdout=subprocess.PIPE, stderr = subprocess.PIPE)
-        output, error = proc.communicate()
-        if proc.returncode != 0:
-            raise weresync.exception.DeviceError(self.target.device, "Error reloading partition mappings.", str(error, "utf-8"))
+        #Not necessarily for LVMs
+        if self.target.get_partition_table_type() != "lvm":
+            proc = subprocess.Popen(["partprobe", self.target.device], stdout=subprocess.PIPE, stderr = subprocess.PIPE)
+            output, error = proc.communicate()
+            if proc.returncode != 0:
+                raise weresync.exception.DeviceError(self.target.device, "Error reloading partition mappings.", str(error, "utf-8"))
 
         #This weights the progress so 30% comes from creating partition and 70% from formatting.
         self.format_partitions(callback=lambda prog: callback(0.3 + prog * 0.7) if callback != None else None)
@@ -941,15 +1089,18 @@ class DeviceCopier:
         :param boot_partition: If not None, this is an int representing the partition that should be mounted on /boot.
         :param efi_partition: If not None this is an int representing the partition that should be mounted on /boot/efi
         :param callback: A function that expects a boolean indicating whether or not the bootloader process has completed."""
-        if callback != None:
-            callback(False)
-        try:
-            self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
-        except weresync.exception.DeviceError as ex:
-            LOGGER.warning("Error copying fstab. Continuing anyway.")
-            LOGGER.debug("", exc_info=sys.exc_info())
+        if self.source.get_partition_table_type() != "lvm":
+            if callback != None:
+                callback(False)
+            try:
+                self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
+            except weresync.exception.DeviceError as ex:
+                LOGGER.warning("Error copying fstab. Continuing anyway.")
+                LOGGER.debug("", exc_info=sys.exc_info())
 
-        self._install_grub(target_mnt, grub_partition, boot_partition, efi_partition)
+            self._install_grub(target_mnt, grub_partition, boot_partition, efi_partition)
 
-        if callback != None:
-            callback(True)
+            if callback != None:
+                callback(True)
+        else:
+            LOGGER.warning("Weresync currently cannot make LVM copies bootable, skipping bootloader installation.")

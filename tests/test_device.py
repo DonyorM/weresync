@@ -525,6 +525,85 @@ def test_get_partition_code_mbr_non_zero_return_code(monkeypatch):
 
     assert "Test error." in str(execinfo)
 
+def test_lvm_get_partitions_standard(monkeypatch):
+    generateStandardMock(monkeypatch, b"""LV:VG:Attr:LSize:Pool:Origin:Data%:Meta%:Move:Log:Cpy%Sync:Convert
+  backup:fileserver:-wi-a-----:5,00g::::::::
+  media:fileserver:-wi-a-----:1,00g::::::::
+  share:fileserver:-wi-a-----:50,00g::::::::
+  root:ubuntu-vg:-wi-ao----:6,52g::::::::
+  swap_1:ubuntu-vg:-wi-ao----:1,00g::::::::
+    """, b"", 0, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    parts = manager.get_partitions()
+    assert ["backup", "media", "share"] == parts
+
+def test_lvm_get_partitions_bad_return_code(monkeypatch):
+    generateStandardMock(monkeypatch, b"Test error.", b"", 1, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    with pytest.raises(DeviceError) as execinfo:
+        manager.get_partitions()
+
+    assert "Test error." in str(execinfo)
+
+def test_lvm_get_drive_size_standard(monkeypatch):
+    generateStandardMock(monkeypatch, b"  12566528S", b"", 0, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    result = manager.get_drive_size()
+    assert 12566528 == result
+
+def test_lvm_get_drive_size_bytes_standard(monkeypatch):
+    generateStandardMock(monkeypatch, b"  6434062336B", b"", 0, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    result = manager.get_drive_size_bytes()
+    assert 6434062336 == result
+
+def test_lvm_get_drive_size_bytes_bad_return_code(monkeypatch):
+    generateStandardMock(monkeypatch, b"Test error", b"", 1, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    with pytest.raises(DeviceError) as execinfo:
+        manager.get_drive_size_bytes()
+
+    assert "Test error" in str(execinfo)
+
+def test_lvm_get_partition_size(monkeypatch):
+    generateStandardMock(monkeypatch, b"/dev/fileserver/media:fileserver:3:1:-1:0:2097152:256:-1:0:-1:252:3",
+                         b"", 0, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    result = manager.get_partition_size("media")
+    assert result == 2097152
+
+def test_lvm_get_partition_size_bad_return_code(monkeypatch):
+    generateStandardMock(monkeypatch, b"Didn't work.", b"", 1, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    with pytest.raises(DeviceError) as execinfo:
+        manager.get_partition_size("media")
+
+    assert "Didn't work." in str(execinfo)
+
+def test_lvm_get_partition_code_unsupported():
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    with pytest.raises(UnsupportedDeviceError) as execinfo:
+        manager.get_partition_code("media")
+
+def test_lvm_get_partition_alignment_unssported():
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    with pytest.raises(UnsupportedDeviceError) as execinfo:
+        manager.get_partition_alignment()
+
+def test_get_empty_space(monkeypatch):
+    generateStandardMock(monkeypatch, b"  70921486336B", b"", 0, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    result = manager.get_empty_space()
+    assert result == 70921486336
+
+def test_get_empty_space_non_zero_return_code(monkeypatch):
+    generateStandardMock(monkeypatch, b"Error.", b"", 1, "lvm")
+    manager = device.LVMDeviceManager("/dev/fileserver")
+    with pytest.raises(DeviceError) as execinfo:
+        manager.get_empty_space()
+
+    assert "Error." in str(execinfo)
+
 #def get_device_label(monkeypatch):
 #    generateStandardMock(monkeypatch, b"test_tabel")
 
