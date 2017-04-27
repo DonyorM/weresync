@@ -62,11 +62,11 @@ class DeviceManager:
         """Returns a list with all the partitions in the drive. The partitions will be listed in **the order they appear on the disk**. So if partition 4 has a start sector of 500, it will appear before partition 1 that has a start sectro of 2000
 
         :returns: A list of integers representing the partition numbers"""
-        partition_table_proc = subprocess.Popen(["parted", "-s", self.device, "p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        partition_table_proc = subprocess.Popen(["parted", "-s", self.device, "p"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output, error =  partition_table_proc.communicate()
         exit_code = partition_table_proc.returncode
         if exit_code != 0:
-            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(error, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(output, "utf-8"))
         partition_result = str(output, "utf-8").split("\n")
         partitions = []
         for i in partition_result:
@@ -92,7 +92,7 @@ class DeviceManager:
         result = str(output, "utf-8").split("\n")
         exit_code = findprocess.returncode
         if exit_code != 0 and exit_code != 1: #if nothing is find, findmnt returns 1; this is valid code
-            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(error, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(output, "utf-8"))
 
         if len(result) >= 2:
             return result[1].strip().split()[0]
@@ -107,11 +107,11 @@ class DeviceManager:
         :raises: :py:class:`~weresync.exception.DeviceError` if there is an error mounting the device.
         """
 
-        mount_proc = subprocess.Popen(["mount", self.part_mask.format(self.device, partition_num), mount_loc], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        mount_proc = subprocess.Popen(["mount", self.part_mask.format(self.device, partition_num), mount_loc], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output, error = mount_proc.communicate()
         exit_code = mount_proc.returncode
         if exit_code != 0:
-            raise weresync.exception.DeviceError(self.device, "Non-zero exit code. Partition Number: {0}".format(partition_num), str(error, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, "Non-zero exit code. Partition Number: {0}".format(partition_num), str(output, "utf-8"))
 
         #if no error, mount succeeded
 
@@ -121,11 +121,11 @@ class DeviceManager:
         :param partition_num: the number of the partition to unmount.
         :raises: :py:class:`~weresync.exception.DeviceError` if the partition is busy or the partition is not mounted.
         """
-        unmount_proc = subprocess.Popen(["umount", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        unmount_proc = subprocess.Popen(["umount", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output, err = unmount_proc.communicate()
         exit_code = unmount_proc.returncode
         if exit_code != 0:
-            raise weresync.exception.DeviceError(self.device, str(err, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, str(output, "utf-8"))
         #If there are no errors, nothing needs be returned
 
 
@@ -140,7 +140,7 @@ class DeviceManager:
         output, error = process.communicate()
         exit_code = process.returncode
         if exit_code != 0:
-            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(error, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(output, "utf-8"))
         result = str(output, "utf-8").split("\n")
         for line in result:
             line = line.split(":")
@@ -160,7 +160,7 @@ class DeviceManager:
         output, error = query_proc.communicate()
         exit_code = query_proc.returncode
         if exit_code != 0:
-            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(error, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(output, "utf-8"))
 
         return int(output) #should always be valid
 
@@ -171,7 +171,7 @@ class DeviceManager:
         output, error = query_proc.communicate()
         exit_code = query_proc.returncode
         if exit_code != 0:
-            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(error, "utf-8"))
+            raise weresync.exception.DeviceError(self.device, "Non-zero exit code", str(output, "utf-8"))
 
         return int(output)
 
@@ -190,11 +190,11 @@ class DeviceManager:
 
             proc_formal = subprocess.Popen(["df", "--block-size=512"], stdout=subprocess.PIPE)
             print(self.part_mask.format(self.device, partition_num))
-            proc = subprocess.Popen(["grep", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=proc_formal.stdout)
+            proc = subprocess.Popen(["grep", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=proc_formal.stdout)
             output, error = proc.communicate()
             exit_code = proc.returncode
             if exit_code >= 2: #grep returns 2 if an error occurs
-                raise weresync.exception.DeviceError(self.device, "Error running grep.", str(error, "utf-8") + str(exit_code))
+                raise weresync.exception.DeviceError(self.device, "Error running grep.", str(output, "utf-8") + str(exit_code))
             elif exit_code == 1:
                 raise weresync.exception.DeviceError(self.device, "No grep line read", None)
 
@@ -222,20 +222,20 @@ class DeviceManager:
         :raises ValueError: if the drive has an unsupported partition table type."""
         table_type = self.get_partition_table_type()
         if table_type == "gpt":
-            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error getting device information", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error getting device information", str(output, "utf-8"))
 
             for line in str(output, "utf-8").split("\n"):
                 if line.strip().startswith(str(partition_num)):
                     words = [x for x in line.split(" ") if x != ""]
                     return int(words[2]) - int(words[1]) #start sector is the second element in this list, last sector is third element
         elif table_type == "msdos":
-            proc = subprocess.Popen(["sfdisk", "-s", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["sfdisk", "-s", self.part_mask.format(self.device, partition_num)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error getting partition size for partition {0}".format(partition_num), str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error getting partition size for partition {0}".format(partition_num), str(output, "utf-8"))
             return int(output)
         else:
             raise ValueError("Unsupported table type")
@@ -251,19 +251,19 @@ class DeviceManager:
         :returns: a string containing the partition code for the appropriate disk type."""
         table_type = self.get_partition_table_type()
         if table_type == "gpt":
-            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error getting device information from sgdisk", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error getting device information from sgdisk", str(output, "utf-8"))
             for line in str(output, "utf-8").split("\n"):
                 if line.strip().startswith(str(partition_num)):
                     words = line.strip().split()
                     return words[5] #The code appears in the fifth column, but the size takes up two columns (one for value and one for unit), so the code appears in the sixth column.
         elif table_type == "msdos":
-            proc = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error getting device partition information.", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error getting device partition information.", str(output, "utf-8"))
 
             for line in str(output, "utf-8").split("\n"):
                 if line.strip().startswith(self.part_mask.format(self.device, partition_num)):
@@ -286,10 +286,10 @@ class DeviceManager:
 
         table_type = self.get_partition_table_type()
         if table_type == "gpt":
-            process = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = process.communicate()
             if process.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error finding partition alignment.", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error finding partition alignment.", str(output, "utf-8"))
             words = [x for x in str(output, "utf-8").split("\n") if x != ""]
             for word in words:
                 if word.startswith("Partitions will be aligned on"):
@@ -301,10 +301,10 @@ class DeviceManager:
 
             raise weresync.exception.DeviceError(self.device, "sgdisk returned abnormal output.")
         elif table_type == "msdos":
-            process = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process = subprocess.Popen(["fdisk", self.device, "-l"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = process.communicate()
             if process.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error getting partition alignment", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error getting partition alignment", str(output, "utf-8"))
             for line in str(output, "utf-8").split("\n"):
                 if line.startswith("Sector size"):
                     parts = line.split("Sector size (logical/physical): ")[1].split(" / ")
@@ -333,10 +333,10 @@ class DeviceManager:
         :raises DeviceError: If the command has a non-zero return code"""
         table_type = self.get_partition_table_type()
         if table_type == "gpt":
-            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(["sgdisk", self.device, "-p"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.device, "Error getting device information.", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.device, "Error getting device information.", str(output, "utf-8"))
             result = str(output, "utf-8").split("\n")
             total_sectors = 0
             for line in result:
@@ -395,10 +395,10 @@ class DeviceManager:
         :param part_num: the partition number whose filesystem to get.
 
         :returns: A string containing the file system type if a type found, otherwise None. If this is a swap partition this returns 'swap'"""
-        proc = subprocess.Popen(["blkid", "-o", "value", "-s", "TYPE", self.part_mask.format(self.device, part_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(["blkid", "-o", "value", "-s", "TYPE", self.part_mask.format(self.device, part_num)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output, error = proc.communicate()
         if proc.returncode != 0 and proc.returncode != 2:
-            raise weresync.exception.DeviceError(self.part_mask.format(self.device, part_num), "Error getting partition file system type.", error)
+            raise weresync.exception.DeviceError(self.part_mask.format(self.device, part_num), "Error getting partition file system type.", output)
         result = str(output, "utf-8").strip()
         return result if result in SUPPORTED_FILESYSTEM_TYPES else None
 
@@ -413,12 +413,12 @@ class DeviceManager:
             if mnt_point != None:
                 self.unmount_partition(part_num)
             if system_type == "swap":
-                proc = subprocess.Popen(["mkswap", self.part_mask.format(self.device, part_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proc = subprocess.Popen(["mkswap", self.part_mask.format(self.device, part_num)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             else:
-                proc = subprocess.Popen(["mkfs", "-t", system_type, self.part_mask.format(self.device, part_num)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proc = subprocess.Popen(["mkfs", "-t", system_type, self.part_mask.format(self.device, part_num)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.part_mask.format(self.device, part_num), "Error creating new file system on partition.", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.part_mask.format(self.device, part_num), "Error creating new file system on partition.", str(output, "utf-8"))
         finally:
             if mnt_point != None:
                 self.mount_partition(part_num, mnt_point)
@@ -588,10 +588,10 @@ class DeviceCopier:
         if copy_process.returncode != 0:
             raise weresync.exception.DeviceError(self.target.device, "Error copying partition table to target.", str(copy_err, "utf-8"))
 
-        final_proc = subprocess.Popen(["sgdisk", self.target.device, "-G"], stderr=subprocess.PIPE)
+        final_proc = subprocess.Popen(["sgdisk", self.target.device, "-G"], stderr=subprocess.STDOUT)
         final_out, final_err = final_proc.communicate()
         if final_proc.returncode != 0:
-            raise weresync.exception.DeviceError(self.target.device, "Error randomizing GUIDs on target device", str(final_err, "utf-8"))
+            raise weresync.exception.DeviceError(self.target.device, "Error randomizing GUIDs on target device", str(final_out, "utf-8"))
 
 
     def _transfer_msdos(self, difference, margin=5):
@@ -600,10 +600,10 @@ class DeviceCopier:
         for i in self.target.get_partitions():
             if self.target.mount_point(i) != None:
                 self.target.unmount_partition(i)
-        current_proc = subprocess.Popen(["sfdisk", "-d", self.source.device], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        current_proc = subprocess.Popen(["sfdisk", "-d", self.source.device], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         partition_table, current_proc_error = current_proc.communicate()
         if current_proc.returncode != 0:
-            raise weresync.exception.DeviceError(self.source.device, "Error getting partition table backup.", str(current_proc_errror, "utf-8"))
+            raise weresync.exception.DeviceError(self.source.device, "Error getting partition table backup.", str(partition_table, "utf-8"))
         partition_table = str(partition_table, "utf-8")
         partition_listings = [x.replace(" ", "") for x in partition_table.split("\n") if x.startswith(self.source.part_mask.format(self.source.device, ""))]
         count = 0
@@ -679,10 +679,10 @@ class DeviceCopier:
         output, error = table_proc.communicate(input="o\nw\nq")
         if table_proc.returncode != 0:
             raise weresync.exception.CopyError("Could not create new partition table on target device", output)
-        transfer_proc = subprocess.Popen(["sfdisk", "--force", self.target.device], stderr=subprocess.PIPE, stdin=subprocess.PIPE, universal_newlines=True)
+        transfer_proc = subprocess.Popen(["sfdisk", "--force", self.target.device], stderr=subprocess.STDOUT, stdin=subprocess.PIPE, universal_newlines=True)
         output, error = transfer_proc.communicate(input=final_str)
         if transfer_proc.returncode != 0:
-            raise weresync.exception.CopyError("Could not copy partition table to target device.", error)
+            raise weresync.exception.CopyError("Could not copy partition table to target device.", output)
 
     def _transfer_lvm(self, difference):
         #In general, partitions and logical volumes (lvs) are synonymous in this method
@@ -785,10 +785,10 @@ class DeviceCopier:
         #the block devices still won't be updated unless the following command is called.
         #Not necessarily for LVMs
         if self.target.get_partition_table_type() != "lvm":
-            proc = subprocess.Popen(["partprobe", self.target.device], stdout=subprocess.PIPE, stderr = subprocess.PIPE)
+            proc = subprocess.Popen(["partprobe", self.target.device], stdout=subprocess.PIPE, stderr = subprocess.STDOUT)
             output, error = proc.communicate()
             if proc.returncode != 0:
-                raise weresync.exception.DeviceError(self.target.device, "Error reloading partition mappings.", str(error, "utf-8"))
+                raise weresync.exception.DeviceError(self.target.device, "Error reloading partition mappings.", str(output, "utf-8"))
 
         #This weights the progress so 30% comes from creating partition and 70% from formatting.
         self.format_partitions(callback=lambda prog: callback(0.3 + prog * 0.7) if callback != None else None)
@@ -867,26 +867,26 @@ class DeviceCopier:
 
                                     identifier = words[0].split("=")[1] #First argument of the space separated list is the identifier,
                                     #which is split by a equals sign, and the second value is the identifier
-                                    proc = subprocess.Popen(["blkid", blkid_arg, identifier], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    proc = subprocess.Popen(["blkid", blkid_arg, identifier], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                                     output, error = proc.communicate()
                                     if proc.returncode == 2:
-                                        raise weresync.exception.DeviceError(self.soruce.device, "Could not find block name of device with id: {0}".format(identifier), str(error, "utf-8"))
+                                        raise weresync.exception.DeviceError(self.soruce.device, "Could not find block name of device with id: {0}".format(identifier), str(output, "utf-8"))
                                     elif proc.returncode != 0:
-                                        raise weresync.exception.DeviceError(self.source.device, "Error finding device error for device with id: {0}".format(identifer), str(error, "utf-8"))
+                                        raise weresync.exception.DeviceError(self.source.device, "Error finding device error for device with id: {0}".format(identifer), str(output, "utf-8"))
                                     #It figures out the value of a placeholder based on context. However, the part_masks rarely have enough context
                                     #So we format the part_mask so that the first placeholder is the partition number, and the device name is inserted
                                     #(comes out to something like "/dev/nbd0p{0}"). Then it can figure it out.
                                     result = parse.parse(self.source.part_mask.format(self.source.device, "{0}"), str(output, "utf-8"))[0] #the first element contains the number
-                                    uuid_proc = subprocess.Popen(["blkid", self.source.part_mask.format(self.target.device, result)], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                                    uuid_proc = subprocess.Popen(["blkid", self.source.part_mask.format(self.target.device, result)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                                     uuid_output, uuid_error = uuid_proc.communicate()
                                     if uuid_proc.returncode == 2:
                                         raise weresync.exception.DeviceError(self.target.device,
                                                                              "Could not find device {0}".format(self.target.part_mask.format(self.target.device, result)),
-                                                                             str(uuid_error, "utf-8"))
+                                                                             str(uuid_output, "utf-8"))
                                     elif uuid_proc.returncode != 0:
                                         raise weresync.exception.DeviceError(self.target.device, "Error finding uuid for device {0}".format(
                                             self.target.part_mask.fomrat(self.target.device, result)),
-                                                                             str(uuid_error, "utf-8"))
+                                                                             str(uuid_output, "utf-8"))
                                     ids = str(uuid_output, "utf-8").split()
                                     for val in ids:
                                         if val.startswith("UUID"):
@@ -1034,19 +1034,20 @@ class DeviceCopier:
                 efi_mounted_here = True
 
             for val in bound_dirs:
-                proc = subprocess.Popen(["mount", "--bind", "/" + val, mount_loc + val], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                proc = subprocess.Popen(["mount", "--bind", "/" + val, mount_loc + val], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 output, error = proc.communicate()
                 if proc.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error mounting special partition {0}".format(val), str(error, "utf-8"))
+                    raise weresync.exception.DeviceError(self.target.device, "Error mounting special partition {0}".format(val), str(output, "utf-8"))
 
             real_root = os.open("/", os.O_RDONLY)
             try:
                 print("Updating Grub")
                 os.chroot(mount_loc)
-                grub_update = subprocess.Popen(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                grub_update = subprocess.Popen(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 update_output, update_error = grub_update.communicate()
                 if grub_update.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_error, "utf-8"))
+                    raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_output, "utf-8"))
+
 
                 print("Installing Grub")
                 grub_command = ["grub-install", "--recheck", self.target.device]
@@ -1058,10 +1059,10 @@ class DeviceCopier:
 
                 grub_install = subprocess.Popen(grub_command,
                                                 stdout=subprocess.PIPE,
-                                                stderr=subprocess.PIPE)
+                                                stderr=subprocess.STDOUT)
                 install_output, install_error = grub_install.communicate()
                 if grub_install.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_error, "utf-8"))
+                    raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_output, "utf-8"))
 
                 print("Cleaning up.")
             finally:

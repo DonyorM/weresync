@@ -26,7 +26,9 @@ from weresync.exception import DeviceError, UnsupportedDeviceError
 def generateStandardMock(monkeypatch, return_value_output, return_value_error, return_code, type="gpt"):
     """Generates a mock for the Popen class that allows easy testing of device methods that use Popen."""
     mock_popen = mock.MagicMock()
-    mock_popen.communicate.return_value = (return_value_output, return_value_error)
+    if return_value_error != None:
+        return_value_output += return_value_error #Simulates combining the stdout and stderr
+    mock_popen.communicate.return_value = (return_value_output, None)
     mock_popen.returncode = return_code
     def popen_constructor(*args, **kargs):
         return mock_popen
@@ -54,7 +56,7 @@ Number  Start   End     Size    File system     Name  Flags
     assert result == [4, 1, 2, 3]
 
 def test_get_partitions_none_zero_returncode(monkeypatch):
-    generateStandardMock(monkeypatch, None, b"Error.", 1)
+    generateStandardMock(monkeypatch, b"", b"Error.", 1)
     manager = device.DeviceManager("/dev/sda") 
     with pytest.raises(DeviceError) as execinfo:
         manager.get_partitions()
