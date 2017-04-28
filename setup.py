@@ -9,7 +9,7 @@ def read(fname):
 from setuptools import setup, find_packages
 setup(
     name="WereSync",
-    version="0.2.1",
+    version="0.3.1",
     package_dir={"" : "src"},
     packages=find_packages("src"),
     install_requires=["parse>=1.6.6"],

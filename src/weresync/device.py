@@ -584,6 +584,10 @@ class DeviceCopier:
             type_args += ["-t", "{0}:{1}".format(i, self.source.get_partition_code(i))]
 
         LOGGER.debug(["sgdisk", self.target.device, "-o"] + add_args + type_args)
+        clear_process = subprocess.Popen(["sgdisk", self.target.device, "-Z"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        clear_output, _ = clear_process.communicate()
+        if clear_process.returncode != 0:
+            raise weresync.exception.DeviceError(self.target.device, "Error clearing target drive.", str(clear_output, "utf-8"))
         copy_process = subprocess.Popen(["sgdisk", self.target.device, "-o"] + add_args + type_args, stdout = subprocess.PIPE, stderr = subprocess.PIPE)
         copy_out, copy_err = copy_process.communicate()
         if copy_process.returncode != 0:
