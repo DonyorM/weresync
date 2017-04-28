@@ -12,8 +12,18 @@ help flag on the weresync command::
 Basic Usage
 ===========
 
+Requirements
+------------
+
 .. IMPORTANT::
    WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
+
+WereSync will copy GPT, MBR, and LVM drives. The source drive
+must have a valid disk label (such a disk label can be created with the gdisk or 
+fdisk command). All `dependencies <installation.html#dependencies>`_ must be installed.
+
+Commands
+--------
 
 WereSync always requires a source drive and a target drive. The source drive comes
 first. WereSync requires root permissions in order to access hard drive data. So to copy from /dev/sda to /dev/sdb, use this command::
@@ -34,6 +44,12 @@ In order for a drive on an EFI system to be made bootable, the efi partition num
 should be installed on (``-g`` flag) should also be passed, especially if the efi
 partition comes before the grub partition on the partition list, as the efi
 partition can trigger the mechanisms used to find the grub partition. 
+
+.. NOTE::
+   WereSync also supports copying Logical Volume Management (LVM) drives. Pass the
+   ``--lvm`` flag to the command to activate this feature. As of now, WereSync does
+   not support copying an LVM setup to a normal partition based setup or vice versa.
+   Additionally, WereSync will not try to make an LVM drive bootable.
 
 .. code-block:: bash
 
@@ -65,7 +81,7 @@ Usage::
      weresync [-h] [-C] [-s SOURCE_MASK] [-t TARGET_MASK]
                 [-e EXCLUDED_PARTITIONS] [-b] [-g GRUB_PARTITION]
                 [-B BOOT_PARTITION] [-E EFI_PARTITION] [-m SOURCE_MOUNT]
-                [-M TARGET_MOUNT] [-r RSYNC_ARGS] [-v] [-d]
+                [-M TARGET_MOUNT] [-r RSYNC_ARGS] [-l] [-v] [-d]
                 source target
 
 .. list-table:: Parameters
