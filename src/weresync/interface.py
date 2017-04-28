@@ -14,7 +14,7 @@
 """This modules has easy, one function interfaces with the DeviceCopier and DeviceManager."""
 
 import weresync.device as device
-from weresync.exception import CopyError, DeviceError, InvalidVersionError
+from weresync.exception import CopyError, DeviceError, InvalidVersionError, UnsupportedDeviceError
 import logging
 import logging.handlers
 import random
@@ -141,11 +141,21 @@ def copy_drive(source, target,
                 source_part_mask = "{0}/{1}"
             if target_part_mask == "{0}{1}":
                 target_part_mask = "{0}/{1}"
-
+        else:
+            managerType = device.DeviceManager
 
 
         source_manager = managerType(source, source_part_mask)
         target_manager = managerType(target, target_part_mask)
+
+        try:
+            target_manager.get_partition_table_type()
+        except (DeviceError, UnsupportedDeviceError) as ex:
+            #Since we're erasing the target drive anyway, we can just create
+            #a new disk label
+            proc = subprocess.Popen(["sgdisk", "-o", target_manager.device])
+            out = proc.communicate()
+
         copier = device.DeviceCopier(source_manager, target_manager)
         if check_if_valid_and_copy:
             try:

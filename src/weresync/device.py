@@ -20,6 +20,7 @@ import subprocess
 import random
 import shutil
 import weresync.exception
+from weresync.exception import DeviceError, CopyError
 import random
 import shlex
 import math
@@ -802,7 +803,10 @@ class DeviceCopier:
         :returns: True if no errors found.
         :raises: a :py:class:`~weresync.exception.CopyError` if any part invalid."""
         source_parts = self.source.get_partitions()
-        target_parts = self.target.get_partitions()
+        try:
+            target_parts = self.target.get_partitions()
+        except DeviceError as ex:
+            raise weresync.exception.CopyError("Target partitions cannot be found. Invalid.")
         if source_parts != target_parts:
             raise weresync.exception.CopyError("Partition count on two drives different. Invalid.")
         for i in source_parts:
