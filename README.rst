@@ -24,24 +24,16 @@ However, you may be skeptical about the usefulness of WereSync. You may be
 thinking, I can do this exact same thing using gparted or ddrescue. Hear me out!
 There are a few reasons to use WereSync over the other tools.
 
-First and foremost, most other cloning tools require confidence in one's
-technical skill. `dd` will easily destroy your drive, gparted requires
-knowing what flags and partition types to use, and CloneZilla is just
-about the opposite of user friendly. WereSync primarily attempts to
-help people who don't want to spend the time and effort to learn
-how to safely use a cloning tool.
+- Unlike `dd` or CloneZilla, WereSync requires a low level of technical skill and an easy learning curve
+- WereSync can run while the your main drive is being used, instead of blocking your computer up for hours at a time
+- WereSync will incrementally update clones, making subsequent clones much faster.
+- WereSync works quickly, a single command copies your entire drive, no booting to live CDs or managing MBRs.
+- WereSync can copy to a smaller drive, provided your drive's data will fit.
+- WereSync creates new UUIDs for the new partitions, allowing you to use the old and new drives alongside each other.
 
-But WereSync also has some of its own features. It contains the ability to properly
-copy a partition table to a new drive and format the new drive. It uses rsync to copy
-so, unlike most other cloning tools, it will update incrementally – saving time. WereSync has
-good default directory exclusions (such as /dev or /proc) so it won't copy parts of your system which should not be copied.
-On top of this WereSync will create new UUIDs for the partitions on the cloned drive,
-allowing the clone to be used alongside the original drive. But the clone will still
-be bootable because WereSync updates the fstab and reinstalls the boot loader. Not to
-mention it can complete the entire clone while leaving the original drive running ("hot cloning"),
-unlike `dd` or CloneZilla.
+In the future, WereSync will also make the clone bootable, but at the moment the complexity of bootloaders means that WereSync clones will require manual bootloader installation before they work.
 
-All of this is accomplished with one button click.
+Full documentation may be found `here <https://pythonhosted.org/WereSync/index.html>`_.
 
 Installation
 ============
@@ -56,7 +48,7 @@ If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily
 
     $ pip install weresync
 
-For more in-depth instructions, see the `installation documentation <https://pythonhosted.org/WereSync/installation.rst>`_.
+For more in-depth instructions, see the `installation documentation <https://pythonhosted.org/WereSync/installation.html>`_.
 
 Basic Usage
 ===========
@@ -97,6 +89,23 @@ First, take a look at our `contribution guidelines <https://github.com/DonyorM/w
 
 To contribute simply fork this repository, make your changes, and submit a pull
 request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_
+
+WereSync currently has huge need of people testing the program on complex drive setups. In order to do this please:
+
+
+
+1. Install WereSync from pip::
+
+    pip install weresync
+
+#. Run it on your system::
+
+    sudo weresync -C source_drive target_drive
+
+#. Report any errors to the `issue tracker <https://github.com/DonyorM/weresync/issues>`_. Please be sure to post the contents of ``/var/log/weresync/weresync.log`` and ``fdisk -l``.
+
+All contributions will be greatly appreciated!
+
 
 Licensing
 =========
