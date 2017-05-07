@@ -2,6 +2,8 @@
 WereSync
 ########
 
+`Installation <#installation>`_ | `Basic Usage <#basic-usage>`_ | `Documentation <https://pythonhosted.org/WereSync/>`_ | `Contributing <#contributing-and-bug-reports>`_
+
 .. image:: https://github.com/DonyorM/weresync/raw/master/docs/source/img/weresync-logo.png
    :align: center 
    :alt: WereSync Logo
