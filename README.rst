@@ -108,6 +108,19 @@ WereSync currently has huge need of people testing the program on complex drive 
 
 All contributions will be greatly appreciated!
 
+Distributions Capability for Drive Copying
+------------------------------------------
+
+|ubuntu| |debian| |arch| |centos| |fedora| |opensuse|
+
+.. |ubuntu| image:: https://img.shields.io/badge/ubuntu-stable-brightgreen.svg
+.. |arch| image:: https://img.shields.io/badge/Arch%20Linux-not%20tested-red.svg
+.. |centos| image:: https://img.shields.io/badge/CentOS-not%20tested-red.svg
+.. |fedora| image:: https://img.shields.io/badge/Fedora-not%20tested-red.svg
+.. |opensuse| image:: https://img.shields.io/badge/openSUSE-not%20tested-red.svg
+.. |debian| image:: https://img.shields.io/badge/Debian-stable-brightgreen.svg
+
+If you are able to test any of these systems, please report your exprience at the `issue tracker <https://github.com/DonyorM/weresync/issues>`_. Any help will be much appreciated.
 
 Licensing
 =========
