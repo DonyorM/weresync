@@ -28,6 +28,7 @@ import logging
 import sys
 import glob
 import parse
+import re
 
 MOUNT_POINT = "/mnt"
 
@@ -41,6 +42,26 @@ SUPPORTED_PARTITION_TABLE_TYPES = ["gpt", "msdos"]
 """The names, as reported by `parted` of the partition table types supported by this program."""
 DEFAULT_RSYNC_ARGS = "-aAXxH --delete"
 """Default arguments passed to rsync. See rsync documentation for what they do."""
+
+def multireplace(string, replacements):
+    """
+    Given a string and a replacement map, it returns the replaced string.
+
+    `Credit goes to bgusach <https://gist.github.com/bgusach/a967e0587d6e01e889fd1d776c5f3729>`_
+    :param str string: string to execute replacements on
+    :param dict replacements: replacement dictionary {value to find: value to replace}
+    :rtype: str
+    """
+    # Place longer ones first to keep shorter substrings from matching where the longer ones should take place
+    # For instance given the replacements {'ab': 'AB', 'abc': 'ABC'} against the string 'hey abc', it should produce
+    # 'hey ABC' and not 'hey ABc'
+    substrs = sorted(replacements, key=len, reverse=True)
+
+    # Create a big OR regex that matches any of the substrings to replace
+    regexp = re.compile('|'.join(map(re.escape, substrs)))
+
+    # For each match, look up the new string in the replacements
+    return regexp.sub(lambda match: replacements[match.group(0)], string)
 
 class DeviceManager:
     """A class that allows various operations on a device.
@@ -128,6 +149,19 @@ class DeviceManager:
         if exit_code != 0:
             raise weresync.exception.DeviceError(self.device, str(output, "utf-8"))
         #If there are no errors, nothing needs be returned
+
+    def get_partition_uuid(self, partition_num):
+        """Gets the UUID for a given partition. This is *not* the filesystem
+        UUID.
+
+        :param partition_num: the number of the partition whose UUID to get.
+        :returns: a string containing the partition's UUID"""
+        proc = subprocess.Popen(["blkid", self.part_mask.format(self.device, partition_num), "-o", "value", "-s", "UUID"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        output, error = proc.communicate()
+        if proc.returncode != 0:
+            raise DeviceError(self.device, "Error getting uuid for partition " + partition_num, str(output, "utf-8"))
+
+        return str(output, "utf-8").strip()
 
 
     def get_partition_table_type(self):
@@ -541,6 +575,27 @@ class DeviceCopier:
         """
         self.source = source if isinstance(source, DeviceManager) else DeviceManager(source)
         self.target = target if isinstance(target, DeviceManager) else DeviceManager(target)
+        self.uuid_dict = None
+
+    def get_uuid_dict(self):
+        """Generates a dictionary that relates the partitions of the source
+        drive to the partitions of the target drive.
+
+        This function requires that both drives have the same number of
+        partitions with the same numbers.
+
+        This function caches its result in self.uuid_dict. After changing drive
+        uuids, self.uuid_dict should be set to None.
+
+        :returns: A dictionary where the keys are the source drive partition UUIDs, and the values are the corresponding target drive UUIDs."""
+        if self.uuid_dict == None:
+            uuids = {}
+            for i in self.source.get_partitions():
+                uuids[self.source.get_partition_uuid(i)] = self.target.get_partition_uuid(i)
+            self.uuid_dict = uuids
+            return uuids
+        else:
+            return self.uuid_dict
 
     def _transfer_gpt(self, difference):
         """Transfers the gpt partition table from the larger source drive to the smaller target drive.
@@ -801,6 +856,8 @@ class DeviceCopier:
         if callback != None:
             callback(1.0)
 
+        self.uuid_dict = None #uuids will have been changed.
+
     def partitions_valid(self):
         """Tests if the partitions on the target drive can support copying files from the source drive.
 
@@ -1051,11 +1108,19 @@ class DeviceCopier:
             try:
                 print("Updating Grub")
                 os.chroot(mount_loc)
-                grub_update = subprocess.Popen(["grub-mkconfig", "-o", "/boot/grub/grub.cfg"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                update_output, update_error = grub_update.communicate()
-                if grub_update.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error updating grub configuration", str(update_output, "utf-8"))
-
+                old_perms = os.stat("/boot/grub/grub.cfg")[0]
+                try:
+                    os.chmod("/boot/grub/grub.cfg", 0o775)
+                    with open("/boot/grub/grub.cfg", "r+") as grubcfg:
+                        cfg = grubcfg.read()
+                        LOGGER.debug("UUID Dicts: " + str(self.get_uuid_dict()))
+                        final = multireplace(cfg, self.get_uuid_dict())
+                        grubcfg.seek(0)
+                        grubcfg.write(final)
+                        grubcfg.truncate()
+                        grubcfg.flush()
+                finally:
+                    os.chmod("/boot/grub/grub.cfg", old_perms)
 
                 print("Installing Grub")
                 grub_command = ["grub-install", "--recheck", self.target.device]
@@ -1072,6 +1137,7 @@ class DeviceCopier:
                 if grub_install.returncode != 0:
                     raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_output, "utf-8"))
 
+                print("Consider running update-grub on your backup. WereSync copies can sometimes fail to capture all the nuances of a complex system.")
                 print("Cleaning up.")
             finally:
                 os.fchdir(real_root)
@@ -1098,6 +1164,7 @@ class DeviceCopier:
         :param boot_partition: If not None, this is an int representing the partition that should be mounted on /boot.
         :param efi_partition: If not None this is an int representing the partition that should be mounted on /boot/efi
         :param callback: A function that expects a boolean indicating whether or not the bootloader process has completed."""
+
         if self.source.get_partition_table_type() != "lvm":
             if callback != None:
                 callback(False)
