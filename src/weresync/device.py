@@ -159,7 +159,7 @@ class DeviceManager:
         proc = subprocess.Popen(["blkid", self.part_mask.format(self.device, partition_num), "-o", "value", "-s", "UUID"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         output, error = proc.communicate()
         if proc.returncode != 0:
-            raise DeviceError(self.device, "Error getting uuid for partition " + partition_num, str(output, "utf-8"))
+            raise DeviceError(self.device, "Error getting uuid for partition " + str(partition_num), str(output, "utf-8"))
 
         return str(output, "utf-8").strip()
 
@@ -591,7 +591,16 @@ class DeviceCopier:
         if self.uuid_dict == None:
             uuids = {}
             for i in self.source.get_partitions():
-                uuids[self.source.get_partition_uuid(i)] = self.target.get_partition_uuid(i)
+                try:
+                    source_uuid = self.source.get_partition_uuid(i)
+                except DeviceError as ex:
+                    if ex.errors == "": #blkid returns an empty string if no UUID found
+                        #This can occur for some partition types, like a microsoft reserved partition
+                        continue
+                    else:
+                        raise ex
+
+                uuids[source_uuid] = self.target.get_partition_uuid(i)
             self.uuid_dict = uuids
             return uuids
         else:
