@@ -1088,7 +1088,6 @@ class DeviceCopier:
         mounted_here = False
         boot_mounted_here = False
         efi_mounted_here = False
-        bound_dirs = ["dev", "proc", "sys", "dev/pts"]
         try:
             mount_loc = self.target.mount_point(grub_partition)
             if mount_loc == None:
@@ -1107,54 +1106,39 @@ class DeviceCopier:
                 self.target.mount_partition(efi_partition, mount_loc + "boot/efi")
                 efi_mounted_here = True
 
-            for val in bound_dirs:
-                proc = subprocess.Popen(["mount", "--bind", "/" + val, mount_loc + val], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                output, error = proc.communicate()
-                if proc.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error mounting special partition {0}".format(val), str(output, "utf-8"))
-
-            real_root = os.open("/", os.O_RDONLY)
+            print("Updating Grub")
+            grub_cfg = mount_loc + "boot/grub/grub.cfg"
+            old_perms = os.stat(grub_cfg)[0]
             try:
-                print("Updating Grub")
-                os.chroot(mount_loc)
-                old_perms = os.stat("/boot/grub/grub.cfg")[0]
-                try:
-                    os.chmod("/boot/grub/grub.cfg", 0o775)
-                    with open("/boot/grub/grub.cfg", "r+") as grubcfg:
-                        cfg = grubcfg.read()
-                        LOGGER.debug("UUID Dicts: " + str(self.get_uuid_dict()))
-                        final = multireplace(cfg, self.get_uuid_dict())
-                        grubcfg.seek(0)
-                        grubcfg.write(final)
-                        grubcfg.truncate()
-                        grubcfg.flush()
-                finally:
-                    os.chmod("/boot/grub/grub.cfg", old_perms)
-
-                print("Installing Grub")
-                grub_command = ["grub-install", "--recheck", self.target.device]
-                if efi_partition != None:
-                    grub_command += ["--efi-directory=/boot/efi", "--target=x86_64-efi", "--bootloader-id=grub"]
-                else:
-                    grub_command += ["--target=i386-pc"]
-                LOGGER.debug("Grub command: " + " ".join(grub_command))
-
-                grub_install = subprocess.Popen(grub_command,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.STDOUT)
-                install_output, install_error = grub_install.communicate()
-                if grub_install.returncode != 0:
-                    raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_output, "utf-8"))
-
-                print("Consider running update-grub on your backup. WereSync copies can sometimes fail to capture all the nuances of a complex system.")
-                print("Cleaning up.")
+                with open(grub_cfg, "r+") as grubcfg:
+                    cfg = grubcfg.read()
+                    LOGGER.debug("UUID Dicts: " + str(self.get_uuid_dict()))
+                    final = multireplace(cfg, self.get_uuid_dict())
+                    grubcfg.seek(0)
+                    grubcfg.write(final)
+                    grubcfg.truncate()
+                    grubcfg.flush()
             finally:
-                os.fchdir(real_root)
-                os.chroot(".")
-                os.close(real_root)
+                os.chmod(grub_cfg, old_perms)
+
+            print("Installing Grub")
+            grub_command = ["grub-install", "--boot-directory=" + mount_loc + "boot", "--recheck"]
+            if efi_partition != None:
+                grub_command += ["--efi-directory=" + mount_loc + "boot/efi", "--target=x86_64-efi", "--removable"]
+            else:
+                grub_command += ["--target=i386-pc", self.target.device]
+            LOGGER.debug("Grub command: " + " ".join(grub_command))
+
+            grub_install = subprocess.Popen(grub_command,
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.STDOUT)
+            install_output, install_error = grub_install.communicate()
+            if grub_install.returncode != 0:
+                raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_output, "utf-8"))
+
+            print("Consider running update-grub on your backup. WereSync copies can sometimes fail to capture all the nuances of a complex system.")
+            print("Cleaning up.")
         finally:
-            for val in reversed(bound_dirs): #this way if bound_dirs are mounted within each other, they will be unmounted in the proper order.
-                subprocess.call(["umount", mount_loc + val])
             if efi_mounted_here:
                 self.target.unmount_partition(efi_partition)
             if boot_mounted_here:
