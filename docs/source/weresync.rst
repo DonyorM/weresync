@@ -39,24 +39,42 @@ partitions, use the ``-C`` flag::
 On subsequent backups, you may not want to include the -C flag, since this can
 sometimes trigger unnecessary repartitioning.
 
-In order for a drive on an EFI system to be made bootable, the efi partition number
-(``-E`` flag) needs to be passed to WereSync. In this case, the partition grub
+.. NOTE::
+   WereSync also supports copying Logical Volume Management (LVM) drives. Pass the
+   ``--lvm`` flag to the command to activate this feature. As of now, WereSync does
+   not support copying an LVM setup to a normal partition based setup or vice versa
+ 
+
+Bootloader Installation
+-----------------------
+
+WereSync will try to install the `Grub2 <https://www.gnu.org/software/grub/manual/grub.html>`_ bootloader on the target drive after the files have been copied. Other bootloaders are currently not supported.
+
+For this to work, it is highly recommended that you pass the partition where grub should be installed (generally the root filesystem) with the ``-g`` flag::
+
+    $ sudo weresync -g 1 /dev/sda /dev/sdb
+
+If this is not passed, WereSync will attempt to discover the grub partition on its own, but this is unreliable.
+
+In order for a drive on an EFI system to be made bootable, the partition number of the EFI system partition
+ to be passed to WereSync with the ``-E`` flag. In this case, the partition grub
 should be installed on (``-g`` flag) should also be passed, especially if the efi
 partition comes before the grub partition on the partition list, as the efi
 partition can trigger the mechanisms used to find the grub partition. 
 
-.. NOTE::
-   WereSync also supports copying Logical Volume Management (LVM) drives. Pass the
-   ``--lvm`` flag to the command to activate this feature. As of now, WereSync does
-   not support copying an LVM setup to a normal partition based setup or vice versa.
-   Additionally, WereSync will not try to make an LVM drive bootable.
-
 .. code-block:: bash
 
-    $ sudo weresync -C -E 2 -g 3 /dev/sda /dev/sdb
+    $ sudo weresync -E 2 -g 3 /dev/sda /dev/sdb
 
+If you have your boot folder on a seperate partition, be sure to let WereSync know which partition that folder is on with the ``-B`` flag::
+
+    $ sudo weresync -E 1 -g 2 -B 3 /dev/sda /dev/sdb
+        
 Obviously replace the numbers with the proper values for your system. Usually the
 grub partition will be the one mounted on /
+
+.. NOTE::
+   WereSync will not try to make an LVM drive bootable.
 
 Image Files
 -----------

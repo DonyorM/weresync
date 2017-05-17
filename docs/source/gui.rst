@@ -19,6 +19,13 @@ To start the gui run the command::
 .. image:: img/gui-example.png
    :align: left
 
+Bootloader Installation
+=======================
+
+WereSync will try to install the `Grub2 <https://www.gnu.org/software/grub/manual/grub.html>`_ bootloader on the target drive after the files have been copied. Other bootloaders are currently not supported.
+
+If you have your /boot directory on another partition, be sure to pass that partition number to the "Boot Partition" field under advanced options.
+
 Dependencies
 ============
 
