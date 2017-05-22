@@ -88,6 +88,7 @@ def copy_drive(source, target,
                mount_points=None,
                rsync_args=device.DEFAULT_RSYNC_ARGS,
                lvm=False,
+               bootloader="uuid_copy",
                part_callback=None,
                copy_callback=None,
                boot_callback=None):
@@ -185,7 +186,7 @@ def copy_drive(source, target,
         print("Finished copying files.")
         print("Making bootable")
         try:
-            copier.make_bootable(mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition, boot_callback)
+            copier.make_bootable(bootloader, mount_points[0], mount_points[1], excluded_partitions, grub_partition, boot_partition, efi_partition, boot_callback)
         except DeviceError as ex:
             print("Error making drive bootable. All files should be fine.")
             return ex
@@ -208,8 +209,15 @@ def main():
         sys.exit(1)
 
     try:
+        import weresync.plugins as plugins
+        manager = plugins.get_manager()
+        manager.collectPlugins()
         default_part_mask="{0}{1}"
-        parser = argparse.ArgumentParser()
+        pluginNames = []
+        for pluginInfo in manager.getAllPlugins():
+            pluginNames.append(pluginInfo.plugin_object.name)
+        epilog_string = "Bootloader plugins found: " + ", ".join(pluginNames)
+        parser = argparse.ArgumentParser(epilog=epilog_string)
         parser.add_argument("source", help="The drive to copy data from. This drive will not be edited.")
         parser.add_argument("target", help="The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE ERASED.")
         parser.add_argument("-C", "--check-and-partition", action="store_true",
@@ -235,6 +243,7 @@ def main():
         parser.add_argument("-r", "--rsync-args",
                             help="List of arguments passed to rsync. Defaults to: " + device.DEFAULT_RSYNC_ARGS,
                             default=device.DEFAULT_RSYNC_ARGS)
+        parser.add_argument("-L", "--bootloader", help="Passed to decide what boootloader plugin to use. See below for list of plugins. Defaults to simply changing the UUIDs of files in /boot.", default="uuid-copy")
         parser.add_argument("-l", "--lvm",
                             help="Considers both source and target to be Logical Volume Groups",
                             action="store_true")
@@ -257,7 +266,8 @@ def main():
                             source_mask, target_mask, excluded_partitions,
                             args.break_on_error, args.grub_partition,
                             args.boot_partition, args.efi_partition,
-                            mount_points, args.rsync_args, lvm=args.lvm)
+                            mount_points, args.rsync_args, lvm=args.lvm,
+                            bootloader=args.bootloader)
         if result != True:
             print(str(result))
 

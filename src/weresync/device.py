@@ -1059,117 +1059,38 @@ class DeviceCopier:
                     self.target.unmount_partition(i)
         print("Finished copying files.")
 
-    def _install_grub(self, target_mnt, grub_partition=None, boot_partition=None, efi_partition=None):
-        """Installs grub on the target drive so it will boot properly, and not rely on the same UUIDs as the source drive.
-
-        This function will pick the first partition with a "boot" folder in the root space to be the partition to install grub on.
-        :param target_mnt: location to mount target file while searching for and installing grub. Can be None is grub_partition is assigned.
-        :param grub_partition: If not None, then it should be a int containing the partition number where grub should be installed. Defaults to None.
-        :param boot_partition: The partition that should be mounted on /boot. If None no partition is mounted.
-        :param efi_partition: The partition that should be mounted on /boot/efi. If None no partition mounted."""
-        if grub_partition == None:
-                for i in self.target.get_partitions():
-                    try:
-                        mount_point = self.target.mount_point(i)
-                        if mount_point == None:
-                            self.target.mount_partition(i, target_mnt)
-                            mount_point = target_mnt
-                        if os.path.exists(mount_point + ("/" if not mount_point.endswith("/") else "") + "boot/grub"):
-                            grub_partition = i
-                            break
-                        else:
-                            self.target.unmount_partition(i)
-                    except weresync.exception.DeviceError as ex:
-                        LOGGER.warning("Could not mount partition {0}. Assumed to not be the partition grub is on.".format(i))
-                        LOGGER.debug("Error info:\n", exc_info=sys.exc_info())
-                else: #No partition found
-                    raise weresync.exception.CopyError("Could not find partition with 'boot/grub' folder on device {0}".format(self.target.device))
-
-        mounted_here = False
-        boot_mounted_here = False
-        efi_mounted_here = False
+    def make_bootable(self, plugin_name, source_mnt, target_mnt, excluded_partitions=[], root_partition=None, boot_partition=None, efi_partition=None, callback=None):
+        """Calls the appropriate plugin to make the target drive bootable.
+        :param plugin_name: the name, not pretty name, of the plugin to use. If None, so bootloading occurs, other than fstab copying.
+        :param source_mnt: a string representing the directory where partitions from the source drive may be mounted.
+        :param target_mnt: a string representing the directory where partitions from the target drive may be mounted.
+        :param copier: an instance of :py:class:`~weresync.device.DeviceCopier` which represents the source and target drives.
+        :param excluded_partitions: these partitions should not be searched or included in the boot installation.
+        :param boot_partition: this is the partition that should be mounted on /boot of the root_partition.
+        :param root_partition: this is the root partition of the drive, where the bootloader should be installed.
+        :param efi_partition: this is the partition of the Efi System Partition. Should be None if not a UEFI system."""
         try:
-            mount_loc = self.target.mount_point(grub_partition)
-            if mount_loc == None:
-                self.target.mount_partition(grub_partition, target_mnt)
-                mounted_here = True
-                mount_loc = target_mnt
+            self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
+        except DeviceError as ex:
+            LOGGER.warning("Error copying fstab. Continuing anyway.")
+            LOGGER.debug("Info: ", exc_info=sys.exc_info())
 
-            mount_loc += "/" if not mount_loc.endswith("/") else ""
-
-            if boot_partition != None:
-                self.target.mount_partition(boot_partition, mount_loc + "boot")
-                boot_mounted_here = True
-
-            if efi_partition != None:
-                os.makedirs(mount_loc + "boot/efi", exist_ok=True)
-                self.target.mount_partition(efi_partition, mount_loc + "boot/efi")
-                efi_mounted_here = True
-
-            print("Updating Grub")
-            grub_cfg = mount_loc + "boot/grub/grub.cfg"
-            old_perms = os.stat(grub_cfg)[0]
+        LOGGER.info("Using plugin: " + plugin_name)
+        if plugin_name != None:
             try:
-                with open(grub_cfg, "r+") as grubcfg:
-                    cfg = grubcfg.read()
-                    LOGGER.debug("UUID Dicts: " + str(self.get_uuid_dict()))
-                    final = multireplace(cfg, self.get_uuid_dict())
-                    grubcfg.seek(0)
-                    grubcfg.write(final)
-                    grubcfg.truncate()
-                    grubcfg.flush()
-            finally:
-                os.chmod(grub_cfg, old_perms)
-
-            print("Installing Grub")
-            grub_command = ["grub-install", "--boot-directory=" + mount_loc + "boot", "--recheck"]
-            if efi_partition != None:
-                grub_command += ["--efi-directory=" + mount_loc + "boot/efi", "--target=x86_64-efi", "--removable"]
-            else:
-                grub_command += ["--target=i386-pc", self.target.device]
-            LOGGER.debug("Grub command: " + " ".join(grub_command))
-
-            grub_install = subprocess.Popen(grub_command,
-                                            stdout=subprocess.PIPE,
-                                            stderr=subprocess.STDOUT)
-            install_output, install_error = grub_install.communicate()
-            if grub_install.returncode != 0:
-                raise weresync.exception.DeviceError(self.target.device, "Error installing grub.", str(install_output, "utf-8"))
-
-            print("Consider running update-grub on your backup. WereSync copies can sometimes fail to capture all the nuances of a complex system.")
-            print("Cleaning up.")
-        finally:
-            if efi_mounted_here:
-                self.target.unmount_partition(efi_partition)
-            if boot_mounted_here:
-                self.target.unmount_partition(boot_partition)
-            if mounted_here:
-                self.target.unmount_partition(grub_partition)
-        print("Finished!")
-
-    def make_bootable(self, source_mnt, target_mnt, excluded_partitions=[], grub_partition=None, boot_partition=None, efi_partition=None, callback=None):
-        """Updates the fstab and installs the grub boot loader on a drive so it is bootable.
-
-        :param source_mnt: the directory to mount partitions from the source drive on.
-        :param target_mnt: the directory to mount partitions from the target drive on.
-        :param excluded_partitions: a list of integers which should not be searched while looking for fstab files or boot directories.
-        :param grub_partition: the partition to install grub on. WereSync will attempt to find the right partition if this is None.
-        :param boot_partition: If not None, this is an int representing the partition that should be mounted on /boot.
-        :param efi_partition: If not None this is an int representing the partition that should be mounted on /boot/efi
-        :param callback: A function that expects a boolean indicating whether or not the bootloader process has completed."""
-
-        if self.source.get_partition_table_type() != "lvm":
-            if callback != None:
-                callback(False)
-            try:
-                self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
-            except weresync.exception.DeviceError as ex:
-                LOGGER.warning("Error copying fstab. Continuing anyway.")
-                LOGGER.debug("", exc_info=sys.exc_info())
-
-            self._install_grub(target_mnt, grub_partition, boot_partition, efi_partition)
-
-            if callback != None:
-                callback(True)
+                import weresync.plugins as plugins
+                manager = plugins.get_manager()
+                manager.collectPlugins()
+                print("Plugin Name: " + plugin_name)
+                for info in manager.getAllPlugins():
+                    print("Plugin: " + info.name)
+                full_name = "weresync_" + plugin_name
+                manager.activatePluginByName(full_name)
+                plugin = manager.getPluginByName(full_name, "bootloader").plugin_object
+                plugin.install_bootloader(source_mnt, target_mnt, self, excluded_partitions, boot_partition, root_partition, efi_partition)
+                manager.deactivatePluginByName(plugin_name)
+            except DeviceError as ex:
+                LOGGER.warning("Error copying bootloader.")
+                LOGGER.debug("Info: ", exc_info=sys.exc_info())
         else:
-            LOGGER.warning("Weresync currently cannot make LVM copies bootable, skipping bootloader installation.")
+            print("No bootloader plugin specified. Not installing bootloader.")

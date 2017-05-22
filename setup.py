@@ -12,7 +12,7 @@ setup(
     version="0.3.1",
     package_dir={"" : "src"},
     packages=find_packages("src"),
-    install_requires=["parse>=1.6.6"],
+    install_requires=["parse>=1.6.6", "yapsy>=1.11.223"],
     entry_points={
         'console_scripts': [
             "weresync = weresync.interface:main"

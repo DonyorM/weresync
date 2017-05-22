@@ -1,5 +1,6 @@
 import weresync.device as device
 import weresync.interface as interface
+import weresync.plugins as plugins
 import subprocess
 import gi
 import sys
@@ -9,6 +10,7 @@ import logging.handlers
 import threading
 gi.require_version("Gtk", '3.0')
 from gi.repository import Gtk, GLib, GObject
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,6 +74,15 @@ def get_resource(resource):
 class WereSyncWindow(Gtk.Window):
     def __init__(self, title="WereSync"):
         super().__init__(title=title)
+        #Find all the bootloader plugins available
+        manager = plugins.get_manager()
+        manager.collectPlugins()
+        pluginDict = {} #Relates the pretty name to the identifier name
+        plugin_store = Gtk.ListStore(int, str, str)
+        for idx, pluginInfo in enumerate(manager.getAllPlugins()):
+            manager.activatePluginByName(pluginInfo.name)
+            obj = pluginInfo.plugin_object
+            plugin_store.append([idx, obj.prettyName, obj.name])
         self.set_icon_from_file(get_resource("weresync.svg"))
         self.grid = Gtk.Grid()
         self.add(self.grid)
@@ -98,8 +109,13 @@ class WereSyncWindow(Gtk.Window):
         self.lvm_button = Gtk.CheckButton(label="Source and target are logical volume groups.")
         self.grid.attach_next_to(self.lvm_button, self.copy_partitions_button, Gtk.PositionType.BOTTOM, 2, 1)
         set_margin(self.lvm_button)
+        self.bootloader_label = Gtk.Label(label="Bootloader Plugin: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
+        self.bootloader_combo = Gtk.ComboBox.new_with_model_and_entry(plugin_store)
+        self.bootloader_combo.set_entry_text_column(1)
+        self.grid.attach_next_to(self.bootloader_label, self.lvm_button, Gtk.PositionType.BOTTOM, 1, 1)
+        self.grid.attach_next_to(self.bootloader_combo, self.bootloader_label, Gtk.PositionType.RIGHT, 1, 1)
         self.efi_partition_label = Gtk.Label(label="EFI Partition Number: ", halign=Gtk.Align.START, xpad=DEFAULT_HORIZONTAL_PADDING, ypad=DEFAULT_VERTICAL_PADDING)
-        self.grid.attach_next_to(self.efi_partition_label, self.lvm_button,
+        self.grid.attach_next_to(self.efi_partition_label, self.bootloader_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
         self.efi_partition_entry = NumberEntry()
         self.efi_partition_entry.set_hexpand(True)
@@ -246,6 +262,9 @@ class WereSyncWindow(Gtk.Window):
         mount_points = (self.source_mount_entry.get_filename(),
                         self.target_mount_entry.get_filename())
         lvm = self.lvm_button.get_active()
+        boot_iter = self.bootloader.get_active_iter()
+        model = self.bootloader.get_model()
+        plugin_name = "weresync_" + model[combo_iter][2]
         LOGGER.debug("LVM: " + str(lvm))
         try:
             self._generate_progress_grid()
@@ -257,6 +276,7 @@ class WereSyncWindow(Gtk.Window):
                                          self.source_part_mask, self.target_part_mask,
                                          excluded_parts, ignore_errors, bootloader_part,
                                          boot_part, efi_part, mount_points, rsync_args, lvm,
+                                                  plugin_name,
                                          lambda x: GLib.idle_add(self.part_callback, x),
                                          lambda num, prog: GLib.idle_add(self.copy_callback, num, prog),
                                          lambda done: GLib.idle_add(self.boot_callback, done))
@@ -313,7 +333,7 @@ class WereSyncWindow(Gtk.Window):
         if self.lvm_button.get_active():
             manager_type = device.LVMDeviceManager
         else:
-            manager_Type = device.DeviceManager
+            manager_type = device.DeviceManager
         source_manager = manager_type(self.source, self.source_part_mask)
         self.copy_progresses = {}
         partitions = source_manager.get_partitions()
