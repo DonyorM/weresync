@@ -48,11 +48,11 @@ def multireplace(string, replacements):
 
     `Credit goes to bgusach
     <https://gist.github.com/bgusach/a967e0587d6e01e889fd1d776c5f3729>`_
+
     :param str string: string to execute replacements on
     :param dict replacements: replacement dictionary
                               {value to find: value to replace}
-    :rtype: str
-    """
+    :returns: a string with the replaced text."""
     # Place longer ones first to keep shorter substrings from matching where
     # the longer ones should take place
     # For instance given the replacements {'ab': 'AB', 'abc': 'ABC'} against
@@ -222,8 +222,8 @@ class DeviceManager:
 
     def get_part_uuid(self, partition_num):
         """Gets the PARTUUID for a given partition, if it exists. This is
-        *not the filesystem UUID and is different from
-        `py:func:~.get_partition_uuid`.
+        *not* the filesystem UUID and is different from
+        `py:func:~.DeviceManager.get_partition_uuid`.
 
         :param partition_num: the number of the partition whose PARTUUID to
                               get.
@@ -607,7 +607,7 @@ class DeviceManager:
 
         :param part_num: the partition number to format
         :param system_type: a file system (ex. ntfs) supported by mkfs on the
-        current system."""
+                            current system."""
         mnt_point = self.mount_point(part_num)
         try:
             if mnt_point is not None:
@@ -1544,6 +1544,7 @@ class DeviceCopier:
                       efi_partition=None,
                       callback=None):
         """Calls the appropriate plugin to make the target drive bootable.
+
         :param plugin_name: the name, not pretty name, of the plugin to use.
                             If None, so bootloading occurs, other than fstab
                             copying.
@@ -1562,15 +1563,9 @@ class DeviceCopier:
         :param efi_partition: this is the partition of the Efi System
                               Partition. Should be None if not a UEFI system.
         """
-        try:
-            self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
-        except DeviceError as ex:
-            LOGGER.warning("Error copying fstab. Continuing anyway.")
-            LOGGER.debug("Info: ", exc_info=sys.exc_info())
-
         LOGGER.info("Using plugin: " + plugin_name)
-        if plugin_name is not None:
-            try:
+        try:
+            if plugin_name is not None:
                 import weresync.plugins as plugins
                 manager = plugins.get_manager()
                 manager.collectPlugins()
@@ -1580,13 +1575,25 @@ class DeviceCopier:
                 if pluginInfo is None:
                     raise PluginNotFoundError("No such plugin {0}".
                                               format(full_name))
+                manager.activatePluginByName(full_name, "bootloader")
                 plugin = pluginInfo.plugin_object
+            else:
+                plugin = None
+
+            try:
+                self._copy_fstab(source_mnt, target_mnt, excluded_partitions)
+            except DeviceError as ex:
+                LOGGER.warning("Error copying fstab. Continuing anyway.")
+                LOGGER.debug("Info: ", exc_info=sys.exc_info())
+
+            if plugin is not None:
                 plugin.install_bootloader(source_mnt, target_mnt, self,
                                           excluded_partitions, boot_partition,
                                           root_partition, efi_partition)
-                manager.deactivatePluginByName(plugin_name)
-            except DeviceError as ex:
-                LOGGER.warning("Error copying bootloader.")
-                LOGGER.debug("Info: ", exc_info=sys.exc_info())
-        else:
-            print("No bootloader plugin specified. Not installing bootloader.")
+                manager.deactivatePluginByName(plugin_name, "bootloader")
+            else:
+                LOGGER.warning("No bootloader plugin specified. Not installing"
+                               "bootloader.")
+        except DeviceError as ex:
+            LOGGER.warning("Error copying bootloader.")
+            LOGGER.debug("Info: ", exc_info=sys.exc_info())

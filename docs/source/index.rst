@@ -52,6 +52,7 @@ Contents:
    gui
    weresync
    api
+   bootloader
    issues
 
 ============

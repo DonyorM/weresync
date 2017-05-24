@@ -41,6 +41,8 @@ class GrubPlugin(IBootPlugin):
 
         if efi_partition is not None:
             import weresync.plugins.weresync_uuid_copy as uuc
+            # UEFI systems tend to only need a UUID copy. No sense in not
+            # reusing old code.
             uuc.UUIDPlugin().install_bootloader(source_mnt, target_mnt, copier,
                                                 excluded_partitions,
                                                 boot_partition,
@@ -48,6 +50,8 @@ class GrubPlugin(IBootPlugin):
             return
 
         if root_partition is None:
+            # This for loop searches for a partition with a /boot/grub folder
+            # and it assumes it is the root partition
                 for i in copier.target.get_partitions():
                     try:
                         mount_point = copier.target.mount_point(i)
@@ -71,9 +75,10 @@ class GrubPlugin(IBootPlugin):
                                     "'boot/grub' folder on device {0}".format(
                                         copier.target.device))
 
+        # These variables are flags that allow the plugin to know if it mounted
+        # any partitions and then clean up properly if it did
         mounted_here = False
         boot_mounted_here = False
-        efi_mounted_here = False
         try:
             mount_loc = copier.target.mount_point(root_partition)
             if mount_loc is None:
@@ -81,6 +86,7 @@ class GrubPlugin(IBootPlugin):
                 mounted_here = True
                 mount_loc = target_mnt
 
+            # This line avoids double slashes in path
             mount_loc += "/" if not mount_loc.endswith("/") else ""
 
             if boot_partition is not None:
@@ -125,8 +131,7 @@ class GrubPlugin(IBootPlugin):
                   " complex system.")
             print("Cleaning up.")
         finally:
-            if efi_mounted_here:
-                copier.target.unmount_partition(efi_partition)
+            # This block cleans up any mounted partitions
             if boot_mounted_here:
                 copier.target.unmount_partition(boot_partition)
             if mounted_here:

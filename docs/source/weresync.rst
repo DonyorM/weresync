@@ -48,19 +48,26 @@ sometimes trigger unnecessary repartitioning.
 Bootloader Installation
 -----------------------
 
-WereSync will try to install the `Grub2 <https://www.gnu.org/software/grub/manual/grub.html>`_ bootloader on the target drive after the files have been copied. Other bootloaders are currently not supported.
+WereSync will attempt to update the target drive's system to it will boot up
+properly. By default this simply changes the UUIDs in the files of the /boot
+folder and EFI system partition, but specific bootloader installation plugins
+can also be specified.
 
-For this to work, it is highly recommended that you pass the partition where grub should be installed (generally the root filesystem) with the ``-g`` flag::
+For this to work, it is highly recommended that you pass the root partition
+with the ``-g`` flag::
 
     $ sudo weresync -g 1 /dev/sda /dev/sdb
 
-If this is not passed, WereSync will attempt to discover the grub partition on its own, but this is unreliable.
+If this is not passed, WereSync will attempt to discover the root filesystem on
+its own, but this is unreliable.
 
-In order for a drive on an EFI system to be made bootable, the partition number of the EFI system partition
- to be passed to WereSync with the ``-E`` flag. In this case, the partition grub
-should be installed on (``-g`` flag) should also be passed, especially if the efi
-partition comes before the grub partition on the partition list, as the efi
-partition can trigger the mechanisms used to find the grub partition. 
+In order for a drive on an EFI system to be made bootable, the partition number
+of the EFI system partition
+to be passed to WereSync with the ``-E`` flag. In this case, the root
+filesystem should be installed on (``-g`` flag) should also be passed,
+especially if the efi partition comes before the grub partition on the
+partition list, as the efi partition can trigger the mechanisms used to find
+the grub partition.
 
 .. code-block:: bash
 
@@ -70,11 +77,23 @@ If you have your boot folder on a seperate partition, be sure to let WereSync kn
 
     $ sudo weresync -E 1 -g 2 -B 3 /dev/sda /dev/sdb
         
-Obviously replace the numbers with the proper values for your system. Usually the
-grub partition will be the one mounted on /
+Obviously replace the numbers with the proper values for your system.
 
 .. NOTE::
    WereSync will not try to make an LVM drive bootable.
+
+Bootloader Plugins
+++++++++++++++++++
+
+Some bootloaders, especially those for MBR booting, require a more specific
+process. Bootloader plugins allow such a process to occur. All plugins
+available will be displayed at the end of the help message displayed with the
+``-h`` flag. The specific plugin to use may be passed with the ``-L`` flag::
+
+    $ sudo weresync -L grub2 -E 1 -g 2 /dev/sda /dev/sdb
+
+For more information on installing and creating bootloader plugins see the
+`bootloader plugin page <bootloader.html>`_
 
 Image Files
 -----------

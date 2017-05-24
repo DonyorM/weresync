@@ -3,7 +3,6 @@
 Known Issues
 ============
 
-* WereSync does not work with bootloaders other than Grub. It will always attempt to install Grub on a drive.
 * Due to the complexity of boot loader installations, bootloading may not always install correctly depending on the nature of your setup
 * Occasionally, installing the boot loader can change the order of boot on the parent drive, especially for a dual-boot drive
 

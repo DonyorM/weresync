@@ -18,12 +18,12 @@ In order to save RAM, uuid_copy will not copy files larger than 200 MB.
 This works for many bootloaders."""
 
 from weresync.plugins import IBootPlugin
-import weresync.device as device
 from weresync.exception import CopyError, DeviceError
 import os
 import sys
 import os.path
 import logging
+import weresync.plugins as plugins
 
 LOGGER = logging.getLogger(__name__)
 
@@ -36,45 +36,6 @@ class UUIDPlugin(IBootPlugin):
     def get_help(self):
         return """Changes all UUIDs in every file of /boot to the new drive's UUIDs.
         \nDoes not install anything else. This is the default option."""
-
-    def _translate_uuid(self, copier, partition, path, target_mnt):
-        """Translates all uuids of the files in the given partition at path.
-
-        :param copier: the object with the DeviceManager instances.
-        :param partition: the partition number of the partition to translate.
-        :param path: the path of the file to change relative to the mount of
-                     the partition. Should start with "/"."""
-
-        mounted_here = False
-        try:
-            mount_point = copier.target.mount_point(partition)
-            if mount_point is None:
-                copier.target.mount_partition(partition, target_mnt)
-                mount_point = target_mnt
-                mounted_here = True
-
-            for dname, dirs, files in os.walk(mount_point + path):
-                for fname in files:
-                    # This if block seeks to avoid opening huge files since
-                    # they are unlikely to be config files like we are looking
-                    # for.
-                    fpath = os.path.join(dname, fname)
-                    if (os.path.getsize(fpath))/1000000 > 200:
-                        continue
-
-                    try:
-                        with open(fpath) as file:
-                            text = file.read()
-                    except UnicodeDecodeError as ex:
-                        continue
-
-                    uuid_dict = copier.get_uuid_dict()
-                    text = device.multireplace(text, uuid_dict)
-                    with open(fpath, "w") as f:
-                        f.write(text)
-        finally:
-            if mounted_here:
-                copier.target.unmount_partition(partition)
 
     def install_bootloader(self, source_mnt, target_mnt, copier,
                            excluded_partitions=[],
@@ -94,8 +55,8 @@ class UUIDPlugin(IBootPlugin):
                                           ("/" if not mount_point.endswith("/")
                                            else "") + "boot"):
                             root_partition = i
-                            self._translate_uuid(copier, i, "/boot",
-                                                 target_mnt)
+                            plugins.translate_uuid(copier, i, "/boot",
+                                                   target_mnt)
                             break
                     except DeviceError as ex:
                         LOGGER.warning("Could not mount partition {0}. "
@@ -115,9 +76,9 @@ class UUIDPlugin(IBootPlugin):
                                     "'boot' folder on device {0}".format(
                                         copier.target.device))
         elif boot_partition is not None:
-            self._translate_uuid(copier, boot_partition, "/", target_mnt)
+            plugins.translate_uuid(copier, boot_partition, "/", target_mnt)
         else:
-            self._translate_uuid(copier, root_partition, "/boot", target_mnt)
+            plugins.translate_uuid(copier, root_partition, "/boot", target_mnt)
 
         if efi_partition is not None:
-            self._translate_uuid(copier, efi_partition, "/", target_mnt)
+            plugins.translate_uuid(copier, efi_partition, "/", target_mnt)
