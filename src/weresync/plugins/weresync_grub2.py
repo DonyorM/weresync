@@ -38,6 +38,15 @@ class GrubPlugin(IBootPlugin):
                            excluded_partitions=[],
                            boot_partition=None, root_partition=None,
                            efi_partition=None):
+
+        if efi_partition is not None:
+            import weresync.plugins.weresync_uuid_copy as uuc
+            uuc.UUIDPlugin().install_bootloader(source_mnt, target_mnt, copier,
+                                                excluded_partitions,
+                                                boot_partition,
+                                                root_partition, efi_partition)
+            return
+
         if root_partition is None:
                 for i in copier.target.get_partitions():
                     try:
@@ -79,12 +88,6 @@ class GrubPlugin(IBootPlugin):
                                               mount_loc + "boot")
                 boot_mounted_here = True
 
-            if efi_partition is not None:
-                os.makedirs(mount_loc + "boot/efi", exist_ok=True)
-                copier.target.mount_partition(efi_partition,
-                                              mount_loc + "boot/efi")
-                efi_mounted_here = True
-
             print("Updating Grub")
             grub_cfg = mount_loc + "boot/grub/grub.cfg"
             old_perms = os.stat(grub_cfg)[0]
@@ -103,12 +106,8 @@ class GrubPlugin(IBootPlugin):
             print("Installing Grub")
             grub_command = ["grub-install",
                             "--boot-directory=" + mount_loc + "boot",
-                            "--recheck"]
-            if efi_partition is not None:
-                grub_command += ["--efi-directory=" + mount_loc + "boot/efi",
-                                 "--target=x86_64-efi", "--removable"]
-            else:
-                grub_command += ["--target=i386-pc", copier.target.device]
+                            "--recheck",
+                            "--target=i386-pc", copier.target.device]
             LOGGER.debug("Grub command: " + " ".join(grub_command))
 
             grub_install = subprocess.Popen(grub_command,

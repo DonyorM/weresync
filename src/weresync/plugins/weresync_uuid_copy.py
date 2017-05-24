@@ -14,7 +14,8 @@
 """This modules contains the code to simply translate the UUIDs of all text
 files to the new drive. It does not change anything else.
 
-In order to save RAM, uuid_copy will not copy files larger than 200 MB."""
+In order to save RAM, uuid_copy will not copy files larger than 200 MB.
+This works for many bootloaders."""
 
 from weresync.plugins import IBootPlugin
 import weresync.device as device
@@ -117,3 +118,6 @@ class UUIDPlugin(IBootPlugin):
             self._translate_uuid(copier, boot_partition, "/", target_mnt)
         else:
             self._translate_uuid(copier, root_partition, "/boot", target_mnt)
+
+        if efi_partition is not None:
+            self._translate_uuid(copier, efi_partition, "/", target_mnt)

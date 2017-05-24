@@ -194,16 +194,11 @@ class DeviceManager:
                                                  str(output, "utf-8"))
         # If there are no errors, nothing needs be returned
 
-    def get_partition_uuid(self, partition_num):
-        """Gets the UUID for a given partition. This is *not* the filesystem
-        UUID.
-
-        :param partition_num: the number of the partition whose UUID to get.
-        :returns: a string containing the partition's UUID"""
+    def _get_blkid_info(self, partition_num, info_name):
         proc = subprocess.Popen(
             [
                 "blkid", self.part_mask.format(self.device, partition_num),
-                "-o", "value", "-s", "UUID"
+                "-o", "value", "-s", info_name
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
@@ -211,10 +206,29 @@ class DeviceManager:
         if proc.returncode != 0:
             raise DeviceError(
                 self.device,
-                "Error getting uuid for partition " + str(partition_num),
+                "Error getting information for partition "
+                + str(partition_num),
                 str(output, "utf-8"))
 
         return str(output, "utf-8").strip()
+
+    def get_partition_uuid(self, partition_num):
+        """Gets the UUID for a given partition. This is *not* the filesystem
+        UUID.
+
+        :param partition_num: the number of the partition whose UUID to get.
+        :returns: a string containing the partition's UUID"""
+        return self._get_blkid_info(partition_num, "UUID")
+
+    def get_part_uuid(self, partition_num):
+        """Gets the PARTUUID for a given partition, if it exists. This is
+        *not the filesystem UUID and is different from
+        `py:func:~.get_partition_uuid`.
+
+        :param partition_num: the number of the partition whose PARTUUID to
+                              get.
+        :returns: a string containing the partition's PARTUUID."""
+        return self._get_blkid_info(partition_num, "PARTUUID")
 
     def get_partition_table_type(self):
         """Gets the type of partition table on the device. Usually "gpt" for
@@ -828,7 +842,19 @@ class DeviceCopier:
                     continue
 
                 uuids[source_uuid] = self.target.get_partition_uuid(i)
-            self.uuid_dict = uuids
+                # This next segment gets the PARTUUID values
+                try:
+                    source_part_uuid = self.source.get_part_uuid(i)
+                except DeviceError as ex:
+                    if ex.errors == "":
+                        continue
+
+                if source_part_uuid == "":
+                    continue
+
+                uuids[source_part_uuid] = self.target.get_part_uuid(i)
+
+                self.uuid_dict = uuids
             return uuids
         else:
             return self.uuid_dict
