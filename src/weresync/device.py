@@ -929,6 +929,8 @@ class DeviceCopier:
             stderr=subprocess.PIPE)
         clear_output, _ = clear_process.communicate()
         if clear_process.returncode != 0:
+            LOGGER.debug("Clear Process error code: {0}".
+                         format(clear_process.returncode))
             raise weresync.exception.DeviceError(
                 self.target.device, "Error clearing target drive.",
                 str(clear_output, "utf-8"))

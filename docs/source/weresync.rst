@@ -118,8 +118,8 @@ Usage::
      weresync [-h] [-C] [-s SOURCE_MASK] [-t TARGET_MASK]
                 [-e EXCLUDED_PARTITIONS] [-b] [-g GRUB_PARTITION]
                 [-B BOOT_PARTITION] [-E EFI_PARTITION] [-m SOURCE_MOUNT]
-                [-M TARGET_MOUNT] [-r RSYNC_ARGS] [-l] [-v] [-d]
-                source target
+                [-M TARGET_MOUNT] [-r RSYNC_ARGS] [-l] [-L BOOTLOADER]
+                [-v] [-d] source target
 
 .. list-table:: Parameters
    :widths: 15 10 30 10
@@ -192,6 +192,16 @@ Usage::
      - -r RSYNC_ARGS
      - The arguments to be passed to the rsync instance used to copy files.
      - -aAXxvH --delete
+   * - --lvm
+     - -l
+     - If passed, both the target and the source drive will be treated as
+       logical volume groups.
+     - Both the target and source are treated as block devices
+   * - --bootloader BOOTLOADER
+     - -L BOOTLOADER
+     - The plugin to use to install the bootloader. Such plugins can be found
+       at the bottom of the help message.
+     - The "uuid_copy" plugin.
    * - --verbose
      - -v
      - Makes WereSync increase output and include more minor details.
