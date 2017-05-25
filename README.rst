@@ -26,14 +26,16 @@ However, you may be skeptical about the usefulness of WereSync. You may be
 thinking, I can do this exact same thing using gparted or ddrescue. Hear me out!
 There are a few reasons to use WereSync over the other tools.
 
+- **WereSync is accessible to less-technical users.** It comes with a simple
+  interface and clone a drive with a single command while your computer is
+  running. No booting to a live disk or pushing through a long initiation
+  process.
 - Unlike `dd` or CloneZilla, WereSync requires a low level of technical skill and an easy learning curve
 - WereSync can run while the your main drive is being used, instead of blocking your computer up for hours at a time
 - WereSync will incrementally update clones, making subsequent clones much faster.
 - WereSync works quickly, a single command copies your entire drive, no booting to live CDs or managing MBRs.
 - WereSync can copy to a smaller drive, provided your drive's data will fit.
 - WereSync creates new UUIDs for the new partitions, allowing you to use the old and new drives alongside each other.
-
-In the future, WereSync will also make the clone bootable, but at the moment the complexity of bootloaders means that WereSync clones will require manual bootloader installation before they work.
 
 Full documentation may be found `here <https://weresync.readthedocs.io/en/latest/gindex.html>`__.
 
