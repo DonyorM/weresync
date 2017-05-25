@@ -29,8 +29,10 @@ setup(
     },
     # Metadata
     author="Daniel Manila",
+    author_email="dmv@springwater7.org",
     description="Incrementally clones Linux drives",
     long_description=read("README.rst"),
     license="Apache 2.0",
     keywords="clone, linux, backup, smaller drive",
+    url="https://github.com/DonyorM/weresync",
 )

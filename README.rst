@@ -2,7 +2,7 @@
 WereSync
 ########
 
-`Installation <#installation>`_ | `Basic Usage <#basic-usage>`_ | `Documentation <https://pythonhosted.org/WereSync/>`_ | `Contributing <#contributing-and-bug-reports>`_
+`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/latest/g>`__ | `Contributing <#contributing-and-bug-reports>`__
 
 .. image:: https://github.com/DonyorM/weresync/raw/master/docs/source/img/weresync-logo.png
    :align: center 
@@ -35,7 +35,7 @@ There are a few reasons to use WereSync over the other tools.
 
 In the future, WereSync will also make the clone bootable, but at the moment the complexity of bootloaders means that WereSync clones will require manual bootloader installation before they work.
 
-Full documentation may be found `here <https://pythonhosted.org/WereSync/index.html>`_.
+Full documentation may be found `here <https://weresync.readthedocs.io/en/latest/gindex.html>`__.
 
 Installation
 ============
@@ -46,11 +46,11 @@ WereSync can be installed using the `setup.py` file.
 
    $ ./setup.py install
 
-If you have `pip <https://pypi.python.org/pypi/pip/>`_ installed, you can easily install WereSync with the following command::
+If you have `pip <https://pypi.python.org/pypi/pip/>`__ installed, you can easily install WereSync with the following command::
 
     $ pip install weresync
 
-For more in-depth instructions, see the `installation documentation <https://pythonhosted.org/WereSync/installation.html>`_.
+For more in-depth instructions, see the `installation documentation <https://weresync.readthedocs.io/en/latest/ginstallation.html>`__.
 
 Basic Usage
 ===========
@@ -76,21 +76,21 @@ To copy from /dev/sda to /dev/sdb (the two drives must have the same partition s
     $ sudo weresync /dev/sda /dev/sdb
 
 For more information, including how to copy the partition table from drive to
-another, see the `Basic Usage <https://pythonhosted.org/WereSync/weresync.html>`_
+another, see the `Basic Usage <https://weresync.readthedocs.io/en/latest/gweresync.html>`__
 documentation page.
 
 Documentation
 =============
 
-Documentation can be found on the `Python Package Index <https://pythonhosted.org/WereSync/>`_.
+Documentation can be found on the `Read the Docs <https://weresync.readthedocs.io/en/latest/g>`__.
 
 Contributing and Bug Reports
 ============================
 
-First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/CONTRIBUTING.rst>`_.
+First, take a look at our `contribution guidelines <https://github.com/DonyorM/weresync/blob/master/CONTRIBUTING.rst>`__.
 
 To contribute simply fork this repository, make your changes, and submit a pull
-request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/weresync/issues/>`_
+request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/weresync/issues/>`__
 
 WereSync currently has huge need of people testing the program on complex drive setups. In order to do this please:
 
@@ -104,7 +104,7 @@ WereSync currently has huge need of people testing the program on complex drive 
 
     sudo weresync -C source_drive target_drive
 
-#. Report any errors to the `issue tracker <https://github.com/DonyorM/weresync/issues>`_. Please be sure to post the contents of ``/var/log/weresync/weresync.log`` and ``fdisk -l``.
+#. Report any errors to the `issue tracker <https://github.com/DonyorM/weresync/issues>`__. Please be sure to post the contents of ``/var/log/weresync/weresync.log`` and ``fdisk -l``.
 
 All contributions will be greatly appreciated!
 
@@ -120,19 +120,19 @@ Distributions Capability for Drive Copying
 .. |opensuse| image:: https://img.shields.io/badge/openSUSE-not%20tested-red.svg
 .. |debian| image:: https://img.shields.io/badge/Debian-stable-brightgreen.svg
 
-If you are able to test any of these systems, please report your exprience at the `issue tracker <https://github.com/DonyorM/weresync/issues>`_. Any help will be much appreciated.
+If you are able to test any of these systems, please report your exprience at the `issue tracker <https://github.com/DonyorM/weresync/issues>`__. Any help will be much appreciated.
 
 Licensing
 =========
 
-This project is licensed under the `Apache 2.0 License <https://www.apache.org/licenses/LICENSE-2.0>`_. Licensing is in the **LICENSE.txt** file in this directory.
+This project is licensed under the `Apache 2.0 License <https://www.apache.org/licenses/LICENSE-2.0>`__. Licensing is in the **LICENSE.txt** file in this directory.
 
 Acknowledgments
 ===============
 
 Huge thanks to the creators of:
 
-* `rsync <https://rsync.samba.org/>`_, whose software allowed this project to be possible.
-* `GNU Parted <https://www.gnu.org/software/parted/>`_
-* And `GPT fdisk <http://www.rodsbooks.com/gdisk/>`_
+* `rsync <https://rsync.samba.org/>`__, whose software allowed this project to be possible.
+* `GNU Parted <https://www.gnu.org/software/parted/>`__
+* And `GPT fdisk <http://www.rodsbooks.com/gdisk/>`__
  

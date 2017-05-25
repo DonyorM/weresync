@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cd $(dirname $0)
+trash dist-old
+mv dist dist-old
+python setup.py bdist bdist_egg bdist_wheel
+twine upload -s -i "dmv@springwater7.org" dist/*
