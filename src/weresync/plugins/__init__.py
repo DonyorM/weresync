@@ -31,7 +31,7 @@ import os.path
 import weresync.device as device
 
 
-def translate_uuid(self, copier, partition, path, target_mnt):
+def translate_uuid(copier, partition, path, target_mnt):
         """Translates all uuids of the files in the given partition at path.
         This will not affect files which are not UTF-8 or ASCII, and it will
         not affect files which are greater than 200 MB.

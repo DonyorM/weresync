@@ -82,22 +82,32 @@ def create_help_box(parent, text, title=""):
 
 
 def generate_drive_list():
-    proc = subprocess.Popen(["lsblk", "-dnoNAME"], stdout=subprocess.PIPE)
+    proc = subprocess.Popen(["lsblk", "-dnoNAME"], stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
     output, _ = proc.communicate()
     if proc.returncode != 0:
-        # TODO issue error
-        pass
+        LOGGER.critical("Error reading block list.\n" + output)
     device_list = [
         "/dev/" + x.strip() for x in str(output, "utf-8").split("\n")
         if x.strip() != ""
     ]
-    lvm_proc = subprocess.Popen(
-        ["vgs", "-o", "name", "--noheadings"], stdout=subprocess.PIPE)
-    lvm_output, _ = lvm_proc.communicate()
-    lvm_list = [
-        "/dev/" + x.strip() for x in str(lvm_output, "utf-8").split("\n")
-        if x.strip() != ""
-    ]
+    try:
+        lvm_proc = subprocess.Popen(
+            ["vgs", "-o", "name", "--noheadings"], stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        lvm_output, _ = lvm_proc.communicate()
+        if lvm_proc.returncode != 0:
+            LOGGER.critical("Error reading volume group list.\n" + lvm_output)
+        lvm_list = [
+            "/dev/" + x.strip() for x in str(lvm_output, "utf-8").split("\n")
+            if x.strip() != ""
+        ]
+    except FileNotFoundError as ex:
+        # Probably means LVM is not installed on the system, which is no big
+        # deal. We'll just log the exception and move on
+        LOGGER.debug("File not found info: ", exc_info=sys.exc_info())
+        lvm_list = []  # This variable needs to be defined
+
     return device_list + lvm_list
 
 
@@ -114,10 +124,14 @@ class WereSyncWindow(Gtk.Window):
         manager = plugins.get_manager()
         manager.collectPlugins()
         plugin_store = Gtk.ListStore(int, str, str)
+        uuid_index = 0
         for idx, pluginInfo in enumerate(manager.getAllPlugins()):
             manager.activatePluginByName(pluginInfo.name)
             obj = pluginInfo.plugin_object
             plugin_store.append([idx, obj.prettyName, obj.name])
+            if obj.name == "uuid_copy":
+                uuid_index = idx
+
         self.set_icon_from_file(get_resource("weresync.svg"))
         self.grid = Gtk.Grid()
         self.add(self.grid)
@@ -126,8 +140,6 @@ class WereSyncWindow(Gtk.Window):
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
-        self.source_label.set_hexpand(False)
-        # TODO add actually drive names
         name_store = Gtk.ListStore(int, str)
         for idx, val in enumerate(generate_drive_list()):
             name_store.append([idx, val])
@@ -168,9 +180,17 @@ class WereSyncWindow(Gtk.Window):
         self.bootloader_combo = Gtk.ComboBox.new_with_model_and_entry(
             plugin_store)
         self.bootloader_combo.set_entry_text_column(1)
+        self.bootloader_combo.set_active(uuid_index)
+        self.bootloader_help = create_help_box(
+            self, "This is the plugin which will attempt to make your clone"
+            " bootable. Select the plugin which corresponds to the bootloader"
+            " you want to install. If you are unsure what to choose, pick"
+            " 'UUID Copy'.", "Bootloader Plugin")
         self.grid.attach_next_to(self.bootloader_label, self.lvm_button,
                                  Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.bootloader_combo, self.bootloader_label,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.grid.attach_next_to(self.bootloader_help, self.bootloader_combo,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.efi_partition_label = Gtk.Label(
             label="EFI Partition Number: ",
@@ -405,9 +425,9 @@ class WereSyncWindow(Gtk.Window):
         mount_points = (self.source_mount_entry.get_filename(),
                         self.target_mount_entry.get_filename())
         lvm = self.lvm_button.get_active()
-        boot_iter = self.bootloader.get_active_iter()
-        model = self.bootloader.get_model()
-        plugin_name = "weresync_" + model[boot_iter][2]
+        boot_iter = self.bootloader_combo.get_active_iter()
+        model = self.bootloader_combo.get_model()
+        plugin_name = model[boot_iter][2]
         LOGGER.debug("LVM: " + str(lvm))
         try:
             self._generate_progress_grid()
