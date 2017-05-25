@@ -23,3 +23,9 @@ API Documentation
 
 .. automodule:: weresync.exception
    :members:
+
+`weresync.plugins`
+==================
+
+.. automodule:: weresync.plugins
+   :members:

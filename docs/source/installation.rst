@@ -17,11 +17,23 @@ WereSync requires different programs for different systems. Generally these prog
 Bootloaders
 -----------
 
-As of now, WereSync only supports installing `Grub <https://www.gnu.org/software/grub/>`_ as a bootloader. In order to install the bootloader on the cloned drive, the proper version of grub (either efi or i386) needs to be installed onto the drive being cloned. You can tell whether or not you have efi by following the instructions on `this post <http://askubuntu.com/a/162896/375032>`_.
+WereSync will attempt to update the /boot directory of the target drive in
+order to make it bootable.
 
-If you have an efi system install a grub efi package, on Debian (Ubuntu) systems this can be down with the command::
+However, some bootloaders, particularly MBR based ones, require a more
+bootloader-specific process.
 
-    $ sudo apt-get install grub-efi
+GRUB
+++++
+
+As of now, WereSync only supports installing
+`Grub <https://www.gnu.org/software/grub/>`_ in this way.
+As of now, WereSync only needs to have the grub package installed if you
+have an MBR drive. If you have an efi system, you do not need to install
+any packages.
+
+You can tell whether or not you have efi by following the instructions on
+`this post <http://askubuntu.com/a/162896/375032>`_.
 
 If you do not have efi, you need the grub-pc package, which can be installed with the following command::
 
