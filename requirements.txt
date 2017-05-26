@@ -1,0 +1,22 @@
+alabaster==0.7.10
+args==0.1.0
+Babel==2.4.0
+clint==0.5.1
+docutils==0.13.1
+imagesize==0.7.1
+Jinja2==2.9.6
+MarkupSafe==1.0
+parse==1.8.0
+pkginfo==1.4.1
+py==1.4.33
+Pygments==2.2.0
+pytest==3.0.7
+pytz==2017.2
+requests==2.13.0
+requests-toolbelt==0.7.1
+six==1.10.0
+snowballstemmer==1.2.1
+Sphinx==1.5.5
+twine==1.8.1
+-e git+https://github.com/DonyorM/weresync.git@293ac7e3886a7dc28a21e6cd33a2aaff71b4eb0a#egg=WereSync
+Yapsy==1.11.223
