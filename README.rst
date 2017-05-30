@@ -2,7 +2,7 @@
 WereSync
 ########
 
-`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/master/g>`__ | `Contributing <#contributing-and-bug-reports>`__
+`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/master/>`__ | `Contributing <#contributing-and-bug-reports>`__
 
 .. image:: https://github.com/DonyorM/weresync/raw/master/docs/source/img/weresync-logo.png
    :align: center 
@@ -37,7 +37,7 @@ There are a few reasons to use WereSync over the other tools.
 - WereSync can copy to a smaller drive, provided your drive's data will fit.
 - WereSync creates new UUIDs for the new partitions, allowing you to use the old and new drives alongside each other.
 
-Full documentation may be found `here <https://weresync.readthedocs.io/en/master/gindex.html>`__.
+Full documentation may be found `here <https://weresync.readthedocs.io/en/master/>`__.
 
 Installation
 ============
@@ -52,7 +52,7 @@ If you have `pip <https://pypi.python.org/pypi/pip/>`__ installed, you can easil
 
     $ pip install weresync
 
-For more in-depth instructions, see the `installation documentation <https://weresync.readthedocs.io/en/master/ginstallation.html>`__.
+For more in-depth instructions, see the `installation documentation <https://weresync.readthedocs.io/en/master/installation.html>`__.
 
 Basic Usage
 ===========
@@ -78,13 +78,13 @@ To copy from /dev/sda to /dev/sdb (the two drives must have the same partition s
     $ sudo weresync /dev/sda /dev/sdb
 
 For more information, including how to copy the partition table from drive to
-another, see the `Basic Usage <https://weresync.readthedocs.io/en/master/gweresync.html>`__
+another, see the `Basic Usage <https://weresync.readthedocs.io/en/master/weresync.html>`__
 documentation page.
 
 Documentation
 =============
 
-Documentation can be found on the `Read the Docs <https://weresync.readthedocs.io/en/master/g>`__.
+Documentation can be found on the `Read the Docs <https://weresync.readthedocs.io/en/master/>`__.
 
 Contributing and Bug Reports
 ============================
