@@ -16,6 +16,8 @@ WereSync's goal for version 1.0 is the following features:
    this should support plugin-capabilities)
  - [ ] Run final tests on a variety of setups, ideally with the help of the
    community to check for oddities.
+ - [ ] Confirm that WereSync continues well after a suspension
+   + Bonus: check if WereSync can continue well after a hibernation
 
 ** Version 1.1
 
