@@ -17,4 +17,14 @@ WereSync's goal for version 1.0 is the following features:
  - [ ] Run final tests on a variety of setups, ideally with the help of the
    community to check for oddities.
 
+** Version 1.1
+
+ - [ ] Support [[http://zfsonlinux.org/][OpenZFS]].
+
+** Future Features
+
+These features are not planned for a specific version yet, and will be moved
+when their time comes
+
+ - Versioned backups
 
