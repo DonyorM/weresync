@@ -4,10 +4,9 @@
 WereSync's goal for version 1.0 is the following features:
 
  - [ ] Make drives with LVM bootable
- - [-] Add builtin plugins for the following bootloaders
+ - [X] Add builtin plugins for the following bootloaders
    + [X] Syslinux
-   + [ ] LILO
-   + [ ] Possibly Grub Legacy (not sure if this is worth it)
+   + +[ ] LILO+ Not possible to support by WereSync
  - [ ] Check that most UEFI bootloaders are truly supported by the uuid_copy
        plugin
    + Grub2 confirmed
