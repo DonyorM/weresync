@@ -43,38 +43,14 @@ class UUIDPlugin(IBootPlugin):
                            efi_partition=None):
 
         if root_partition is None and boot_partition is None:
-                for i in copier.target.get_partitions():
-                    try:
-                        mounted_here = False
-                        mount_point = copier.target.mount_point(i)
-                        if mount_point is None:
-                            copier.target.mount_partition(i, target_mnt)
-                            mount_point = target_mnt
-                            mounted_here = True
-                        if os.path.exists(mount_point +
-                                          ("/" if not mount_point.endswith("/")
-                                           else "") + "boot"):
-                            root_partition = i
-                            plugins.translate_uuid(copier, i, "/boot",
-                                                   target_mnt)
-                            break
-                    except DeviceError as ex:
-                        LOGGER.warning("Could not mount partition {0}. "
-                                       "Assumed to not be the partition grub "
-                                       "is on.".format(i))
-                        LOGGER.debug("Error info:\n", exc_info=sys.exc_info())
-                    finally:
-                        try:
-                            if mounted_here:
-                                self.target.unmount_partition(i)
-                        except DeviceError as ex:
-                            LOGGER.warning("Error unmounting partition " + i)
-                            LOGGER.debug("Error info:\n",
-                                         exc_info=sys.exc_info())
-                else:  # No partition found
+                part = plugins.search_for_boot_part(target_mnt, copier.target,
+                                                    "boot",
+                                                    excluded_partitions)
+                if part is None:
                     raise CopyError("Could not find partition with "
                                     "'boot' folder on device {0}".format(
                                         copier.target.device))
+                plugins.translate_uuid(copier, part, "/boot", target_mnt)
         elif boot_partition is not None:
             plugins.translate_uuid(copier, boot_partition, "/", target_mnt)
         else:

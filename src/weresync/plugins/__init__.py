@@ -8,6 +8,7 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
+
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
@@ -29,6 +30,11 @@ from distutils.sysconfig import get_python_lib
 import os
 import os.path
 import weresync.device as device
+from weresync.exception import DeviceError, CopyError
+import sys
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 def translate_uuid(copier, partition, path, target_mnt):
@@ -57,7 +63,7 @@ def translate_uuid(copier, partition, path, target_mnt):
                     # they are unlikely to be config files like we are looking
                     # for.
                     fpath = os.path.join(dname, fname)
-                    if (os.path.getsize(fpath))/1000000 > 200:
+                    if (os.path.getsize(fpath)) / 1000000 > 200:
                         continue
 
                     try:
@@ -73,6 +79,47 @@ def translate_uuid(copier, partition, path, target_mnt):
         finally:
             if mounted_here:
                 copier.target.unmount_partition(partition)
+
+
+def search_for_boot_part(self, target_mnt, target_manager,
+                         search_folder, exlcuded_partitions=[]):
+        """Finds the partition that is the boot partition, by searching for
+        a specific folder name. The first partition that contains this name
+        or /boot/<name> will be returned.
+
+        :param target_mnt: the folder to mount partitions
+        :param target_manager: The :py:class:`~weresync.device.DeviceManager`
+                               class representing the drive to search.
+        :param search_folder: The name of the folder to search for
+        :param excluded_partitions: A list containing a list of partitions
+                                    which should not be searched."""
+        for i in target_manager.get_partitions():
+            try:
+                mounted_here = False
+                mount_point = target_manager.mount_point(i)
+                if mount_point is None:
+                        target_manager.mount_partition(i, target_mnt)
+                        mount_point = target_mnt
+                        mounted_here = True
+                mount_point += "/" if not mount_point.endswith("/") else ""
+                if (os.path.exists(mount_point + "boot/" + search_folder)
+                    or os.path.exists(mount_point + search_folder)):
+                        return i
+            except DeviceError as ex:
+                    LOGGER.warning("Could not mount partition {0}. "
+                                   "Assumed to not be the partition grub "
+                                   "is on.".format(i))
+                    LOGGER.debug("Error info:\n", exc_info=sys.exc_info())
+            finally:
+                    try:
+                        if mounted_here:
+                                self.target.unmount_partition(i)
+                    except DeviceError as ex:
+                            LOGGER.warning("Error unmounting partition " + i)
+                            LOGGER.debug("Error info:\n",
+                                         exc_info=sys.exc_info())
+        else:  # No partition found
+            return None
 
 
 class IBootPlugin(IPlugin):

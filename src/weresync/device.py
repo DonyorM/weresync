@@ -204,11 +204,9 @@ class DeviceManager:
             stderr=subprocess.STDOUT)
         output, error = proc.communicate()
         if proc.returncode != 0:
-            raise DeviceError(
-                self.device,
-                "Error getting information for partition "
-                + str(partition_num),
-                str(output, "utf-8"))
+            raise DeviceError(self.device,
+                              "Error getting information for partition " +
+                              str(partition_num), str(output, "utf-8"))
 
         return str(output, "utf-8").strip()
 
@@ -256,8 +254,8 @@ class DeviceManager:
 
         if table_type not in SUPPORTED_PARTITION_TABLE_TYPES:
             raise weresync.exception.UnsupportedDeviceError(
-                "Partition table type {0} not supported by WereSync.".format(
-                    table_type))
+                "Partition table"
+                "type {0} not supported by WereSync.".format(table_type))
         else:
             return table_type
 
@@ -788,8 +786,8 @@ class LVMDeviceManager(DeviceManager):
                 str(output, "utf-8"))
 
         result = str(output, "utf-8").strip(
-        )[0:
-          -1]  # The final character in the results is a unit, in this case "S"
+        )[0:-1]
+        # The final character in the results is a unit, in this case "S"
         return int(result)
 
 
@@ -929,8 +927,8 @@ class DeviceCopier:
             stderr=subprocess.PIPE)
         clear_output, _ = clear_process.communicate()
         if clear_process.returncode != 0:
-            LOGGER.debug("Clear Process error code: {0}".
-                         format(clear_process.returncode))
+            LOGGER.debug("Clear Process error code: {0}".format(
+                clear_process.returncode))
             raise weresync.exception.DeviceError(
                 self.target.device, "Error clearing target drive.",
                 str(clear_output, "utf-8"))
@@ -1222,8 +1220,8 @@ class DeviceCopier:
         # This weights the progress so 30% comes from creating partition and
         # 70% from formatting.
         self.format_partitions(
-            callback=lambda prog: (callback(0.3 + prog * 0.7) if callback
-                                   is not None else None)
+            callback=lambda prog: (callback(0.3 + prog * 0.7) if callback is
+                                   not None else None)
         )
         # If it's done, it's done
         if callback is not None:
@@ -1383,8 +1381,8 @@ class DeviceCopier:
                                         ],
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT)
-                                    uuid_output, uuid_error = (uuid_proc.
-                                                               communicate())
+                                    uuid_output, uuid_error = (
+                                        uuid_proc.communicate())
                                     if uuid_proc.returncode == 2:
                                         raise weresync.exception.DeviceError(
                                             self.target.device,
@@ -1406,8 +1404,9 @@ class DeviceCopier:
                                     for val in ids:
                                         if val.startswith("UUID"):
                                             words[0] = val.replace(
-                                                '"', ''
-                                            )  # Have to remove the double
+                                                '"',
+                                                '')
+                                            # Have to remove the double
                                             # quotes from blkid's output.
                                             break
                                     target_fstab.write(" ".join(words) + "\n")
@@ -1522,8 +1521,8 @@ class DeviceCopier:
                 if ignore_failures:
                     LOGGER.warning(
                         "Error copying data for partition {0} from device {1} "
-                        "to {2}.".
-                        format(i, self.source.device, self.target.device))
+                        "to {2}.".format(i, self.source.device,
+                                         self.target.device))
                     LOGGER.debug("Error info.", exc_info=sys.exc_info())
                     if callback is not None:
                         callback(i, -1.0)
@@ -1572,11 +1571,10 @@ class DeviceCopier:
                 manager = plugins.get_manager()
                 manager.collectPlugins()
                 full_name = "weresync_" + plugin_name
-                pluginInfo = manager.getPluginByName(full_name,
-                                                     "bootloader")
+                pluginInfo = manager.getPluginByName(full_name, "bootloader")
                 if pluginInfo is None:
-                    raise PluginNotFoundError("No such plugin {0}".
-                                              format(full_name))
+                    raise PluginNotFoundError("No such plugin {0}".format(
+                        full_name))
                 manager.activatePluginByName(full_name, "bootloader")
                 plugin = pluginInfo.plugin_object
             else:
