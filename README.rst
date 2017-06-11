@@ -2,7 +2,13 @@
 WereSync
 ########
 
-`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/master/>`__ | `Contributing <#contributing-and-bug-reports>`__
+`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/master/>`__ | `Contributing <#contributing-and-bug-reports>`__ 
+
+|wire|_
+
+.. |wire| image:: https://img.shields.io/badge/Wire-join%20channel-brightgreen.svg?logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAQAAAC1QeVaAAABE0lEQVQYV12Qz4pBcQCFD0spW8VOSfEAygt4Fg%2BiptmJ1YyFBTOUF1AiK4uZZoql1S0kt%2Bj6e3%2Fu%2FX2zUTTnbE7f2X2SJKKSRIwsWWIPch%2BkqbHgzJkFNdL3m6h0LgUbnhJsziWJqIicUriAwd5rAPeUIiLp1oCt2QFjxsCOrYFbQ9I8bhzsIPwC6tSBbwYh1jjzuNZ548PI%2FgBdusAvIwvGX%2BflFK4%2BDOyMkA4dQmYMLFx9p6Be4rDETm0HeOUF%2BGBqsYdlLyFp0wTfdHmjSpV3PvENbJqSiAwzngehWdkLF5Y2MOB5wwwREZUmZW8PAUeOBIC3n5SfHLVzTstduYEbuCun1c79sytVkv1iv1hJPsgfIJcJKTG1gx4AAAAASUVORK5CYII%3D
+   :alt: Join Wire Channel
+.. _wire: http://wire.com/b/weresync
 
 .. image:: https://github.com/DonyorM/weresync/raw/master/docs/source/img/weresync-logo.png
    :align: center 
