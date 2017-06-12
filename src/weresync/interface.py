@@ -17,6 +17,7 @@ DeviceManager."""
 import weresync.device as device
 from weresync.exception import (CopyError, DeviceError, InvalidVersionError,
                                 UnsupportedDeviceError)
+import weresync.utils as utils
 import logging
 import logging.handlers
 import random
@@ -95,6 +96,69 @@ def mount_loop_device(image_file):
     return device_name
 
 
+def create_new_vg_if_not_exists(lvm, name, target):
+    """Creates a new Logical Volume Group with the name ``lvm`` + "copy"
+    and all of the partitions of the target with type "lvm" added to it.
+
+    This is not a conclusive function and misses several uses of LVM drives,
+    if your situation is not covered, please feel free to open a pull request
+    fixing it.
+
+    :param lvm: a string representing the name of the source lvm
+    :param target: a :py:class:`~weresync.device.DeviceManager` representing
+                   the device whose partitions to add to the LVM."""
+    lvm_partitions = []
+    for i in target.get_partitions():
+        code = target.get_partition_code(i).lower()
+        if code == "8e00" or code == "8e":
+            # the two versions appear in gdisk and fdisk, respectively
+            lvm_partitions.append(i)
+
+    lvm_part_block = [target.part_mask.format(target.device, x)
+                      for x in lvm_partitions]
+    lvm_test = subprocess.Popen(["vgs", name], stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+    output, _ = lvm_test.communicate()
+    if lvm_test.returncode == 5:
+        # If the VG does not exist, the return code is 5
+        utils.run_proc(["vgcreate", name] + lvm_part_block,
+                       target.device, "Error creating logical volume group.")
+    else:
+        result = utils.run_proc(["pvs", "-S", "vg_name=" + name,
+                                 "--noheadings", "-o", "pv_name"], name,
+                                "Error finding physical volumes for LVM.")
+        results = [x.strip() for x in result.split("\n")]
+        lvm_part_block = [x for x in lvm_part_block if x not in results]
+        if len(lvm_part_block) > 0:
+            utils.run_proc(["vgextend", name] + lvm_part_block, name,
+                           "Error adding PVs to LVM")
+
+
+def copy_partitions(copier, part_callback=None, lvm=False):
+    """Checks if partitions are valid and copies if they aren't.
+
+    :param copier: the :py:class:`~weresync.device.DeviceCopier` object to do
+                   the copying with.
+    :param part_callback: see the documentation for :py:func:`~.copy_drive`"""
+    try:
+        print("Checking partition validity.")
+        copier.partitions_valid(lvm)
+        if part_callback is not None:
+            part_callback(1.0)
+            LOGGER.info("Drives are compatible")
+    except CopyError as ex:
+        LOGGER.warning(ex.message)
+        print("Partitions invalid!\nCopying drive partition table.")
+        LOGGER.warning("Drives are incompatible.")
+        if lvm:
+            copier.transfer_lvm_partition(callback=part_callback)
+        else:
+            copier.transfer_partition_table(callback=part_callback)
+    else:
+        if part_callback is not None:
+            part_callback(1.0)
+
+
 def copy_drive(source,
                target,
                check_if_valid_and_copy=False,
@@ -102,12 +166,13 @@ def copy_drive(source,
                target_part_mask="{0}{1}",
                excluded_partitions=[],
                ignore_copy_failures=True,
-               grub_partition=None,
+               root_partition=None,
                boot_partition=None,
                efi_partition=None,
                mount_points=None,
                rsync_args=device.DEFAULT_RSYNC_ARGS,
-               lvm=False,
+               lvm_source=None,
+               lvm_target=None,
                bootloader="uuid_copy",
                part_callback=None,
                copy_callback=None,
@@ -145,7 +210,7 @@ def copy_drive(source,
                                  recommended that this be left to true,
                                  because errors frequently occur with swap
                                  partitions or other strange partitions.
-    :param grub_partition: If not None, this is an int that determines which
+    :param root_partition: If not None, this is an int that determines which
                            partition grub should be installed to. Defaults to
                            None.
     :param boot_partition: If not None, this is an int that represents the
@@ -157,8 +222,7 @@ def copy_drive(source,
                          case of testing. If None, the function will generate
                          two random directories in the /tmp folder. Defaults
                          to None.
-    :param lvm: If True, WereSync treats both target and source as Logical
-                Volume Groups. Defaults to false.
+    :param lvm: the Logical Volume Group to copy to the new drive.
     :param part_callback: a function that can be called to pass the progress
                           of the partition function. The function should
                           expect on float between 0 and 1, a negative value
@@ -198,18 +262,8 @@ def copy_drive(source,
                 "want your image to be bootable."
             )
 
-        if lvm:
-            managerType = device.LVMDeviceManager
-            if source_part_mask == "{0}{1}":
-                # LVMDeviceManager strips a trailing slash off of a VG name
-                source_part_mask = "{0}/{1}"
-            if target_part_mask == "{0}{1}":
-                target_part_mask = "{0}/{1}"
-        else:
-            managerType = device.DeviceManager
-
-        source_manager = managerType(source, source_part_mask)
-        target_manager = managerType(target, target_part_mask)
+        source_manager = device.DeviceManager(source, source_part_mask)
+        target_manager = device.DeviceManager(target, target_part_mask)
 
         try:
             target_manager.get_partition_table_type()
@@ -220,21 +274,20 @@ def copy_drive(source,
             proc.communicate()
 
         copier = device.DeviceCopier(source_manager, target_manager)
+        partitions_remade = False
         if check_if_valid_and_copy:
-            try:
-                print("Checking partition validity.")
-                copier.partitions_valid()
-                if part_callback is not None:
-                    part_callback(1.0)
-                LOGGER.info("Drives are compatible")
-            except CopyError as ex:
-                LOGGER.warning(ex.message)
-                print("Partitions invalid!\nCopying drive partition table.")
-                LOGGER.warning("Drives are incompatible.")
-                copier.transfer_partition_table(callback=part_callback)
-            else:
-                if part_callback is not None:
-                    part_callback(1.0)
+            copy_partitions(copier, part_callback)
+            partitions_remade = True
+
+        if lvm_source is not None:
+            create_new_vg_if_not_exists(lvm_source, lvm_source +
+                                        "-copy", target_manager)
+            lvm_source = device.LVMDeviceManager(lvm_source)
+            lvm_target = device.LVMDeviceManager(lvm_source.device + "-copy")
+            copier.lvm_source = lvm_source
+            copier.lvm_target = lvm_target
+            if partitions_remade and check_if_valid_and_copy:
+                copy_partitions(copier, part_callback, lvm=True)
 
         if mount_points is None or len(mount_points) < 2 or mount_points[
                 0] == mount_points[1]:
@@ -253,10 +306,11 @@ def copy_drive(source,
             rsync_args,
             callback=copy_callback)
         print("Finished copying files.")
+
         print("Making bootable")
         try:
             copier.make_bootable(bootloader, mount_points[0], mount_points[1],
-                                 excluded_partitions, grub_partition,
+                                 excluded_partitions, root_partition,
                                  boot_partition, efi_partition, boot_callback)
         except DeviceError as ex:
             print("Error making drive bootable. All files should be fine.")
@@ -340,9 +394,9 @@ def main():
         )
         parser.add_argument(
             "-g",
-            "--grub-partition",
+            "--root-partition",
             type=int,
-            help="Partition where grub should be installed.")
+            help="The partition mounted on /.")
         parser.add_argument(
             "-B",
             "--boot-partition",
@@ -363,7 +417,7 @@ def main():
             "-M",
             "--target-mount",
             help="Folder where partitions from source drive should be mounted."
-            )
+        )
         parser.add_argument(
             "-r",
             "--rsync-args",
@@ -380,9 +434,8 @@ def main():
         parser.add_argument(
             "-l",
             "--lvm",
-            help=("Considers both source and target to be Logical Volume "
-                  "Groups"),
-            action="store_true")
+            help="The name of the source logical volume.",
+            nargs="+")
         group = parser.add_mutually_exclusive_group()
         group.add_argument(
             "-v",
@@ -405,6 +458,15 @@ def main():
             loglevel = logging.WARNING
         start_logging_handler(stream_level=loglevel)
         mount_points = (args.source_mount, args.target_mount)
+        if args.lvm is not None and len(args.lvm) > 2:
+            LOGGER.warning("More than two lvm options added. Please give "
+                           "either one or two options.")
+            sys.exit(1)
+
+        lvm_source = args.lvm[0] if args.lvm is not None else None
+        lvm_target = args.lvm[1] if (args.lvm is not None
+                                     and len(args.lvm) == 2) else None
+
         excluded_partitions = [
             int(x) for x in args.excluded_partitions.split(",")
         ] if args.excluded_partitions is not None else []
@@ -420,13 +482,14 @@ def main():
             target_mask,
             excluded_partitions,
             args.break_on_error,
-            args.grub_partition,
+            args.root_partition,
             args.boot_partition,
             args.efi_partition,
             mount_points,
             args.rsync_args,
-            lvm=args.lvm,
-            bootloader=args.bootloader)
+            lvm_source=lvm_source,
+            lvm_target=lvm_target,
+            bootloader=args.bootloader,)
         if result is not True:
             print(str(result))
 

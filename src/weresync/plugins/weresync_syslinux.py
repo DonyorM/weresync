@@ -30,6 +30,11 @@ class SyslinuxPlugin(IBootPlugin):
             boot_part = plugins.search_for_boot_part(target_mnt, copier.target,
                                                      "syslinux",
                                                      excluded_partitions)
+            if boot_part is None and copier.lvm_source is not None:
+                boot_part = plugins.search_for_boot_part(target_mnt,
+                                                         copier.lvm_source,
+                                                         "syslinux",
+                                                         excluded_partitions)
             if boot_part is None:
                 raise CopyError("Could not find partition with 'syslinux' "
                                 "folder on device {0}.".format(copier.target.

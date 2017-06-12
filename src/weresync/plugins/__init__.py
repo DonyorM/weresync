@@ -81,8 +81,30 @@ def translate_uuid(copier, partition, path, target_mnt):
                 copier.target.unmount_partition(partition)
 
 
-def search_for_boot_part(self, target_mnt, target_manager,
-                         search_folder, exlcuded_partitions=[]):
+def mount_partition(manager, lvm_manager, part, mount_point):
+        """Mounts a partition and figures out whether or not the partition
+        is in the LVM drive. It assumes a numerical partition is not a
+        logical volume.
+
+        :param manager: a :py:class:`~weresync.device.DeviceManager` object
+                        representing a possible mount.
+        :param lvm_manager: a :py:class:`~weresync.device.LVMDeviceManager`
+                            object representing a possible host for the mount.
+        :param part: the name or number of the partition to mount.
+        :param mount_point: the location to mount the partition."""
+
+        try:
+                part_num = int(part)
+                manager.mount_partition(part_num, mount_point)
+                return
+        except ValueError:
+                pass
+
+        lvm_manager.mount_partition(part, mount_point)
+
+
+def search_for_boot_part(target_mnt, target_manager,
+                         search_folder, exlcuded_partitions=[],):
         """Finds the partition that is the boot partition, by searching for
         a specific folder name. The first partition that contains this name
         or /boot/<name> will be returned.
@@ -94,6 +116,8 @@ def search_for_boot_part(self, target_mnt, target_manager,
         :param excluded_partitions: A list containing a list of partitions
                                     which should not be searched."""
         for i in target_manager.get_partitions():
+            if i in exlcuded_partitions:
+                continue
             try:
                 mounted_here = False
                 mount_point = target_manager.mount_point(i)
@@ -120,6 +144,7 @@ def search_for_boot_part(self, target_mnt, target_manager,
                                          exc_info=sys.exc_info())
         else:  # No partition found
             return None
+
 
 
 class IBootPlugin(IPlugin):
@@ -192,6 +217,9 @@ class IBootPlugin(IPlugin):
         return "Installs the {0} bootloader.".format(self.prettyName)
 
 
+
+
+
 dirs = [
     "/usr/local/weresync/plugins", get_python_lib(), os.path.dirname(__file__)
 ]
@@ -208,7 +236,3 @@ __manager = PluginManager(
 def get_manager():
     """Returns the PluginManager for this instance of WereSync"""
     return __manager
-
-
-def get_plugin_for_name(name):
-    __manager.collectPlugins()

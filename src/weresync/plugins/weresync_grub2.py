@@ -14,6 +14,7 @@
 """This modules contains the code to install the grub2 bootloader."""
 
 from weresync.plugins import IBootPlugin
+import weresync.plugins as plugins
 import weresync.device as device
 from weresync.exception import CopyError, DeviceError
 import subprocess
@@ -49,7 +50,7 @@ class GrubPlugin(IBootPlugin):
                                                 root_partition, efi_partition)
             return
 
-        if root_partition is None:
+        if root_partition is None and boot_partition is None:
             # This for loop searches for a partition with a /boot/grub folder
             # and it assumes it is the root partition
                 for i in copier.target.get_partitions():
@@ -80,18 +81,25 @@ class GrubPlugin(IBootPlugin):
         mounted_here = False
         boot_mounted_here = False
         try:
-            mount_loc = copier.target.mount_point(root_partition)
-            if mount_loc is None:
-                copier.target.mount_partition(root_partition, target_mnt)
-                mounted_here = True
+            if root_partition is not None:
+                mount_loc = copier.target.mount_point(root_partition)
+                if mount_loc is None:
+                    plugins.mount_partition(copier.target, copier.lvm_target,
+                                            root_partition, target_mnt)
+                    mounted_here = True
+                    mount_loc = target_mnt
+            else:
                 mount_loc = target_mnt
 
             # This line avoids double slashes in path
             mount_loc += "/" if not mount_loc.endswith("/") else ""
 
             if boot_partition is not None:
-                copier.target.mount_partition(boot_partition,
-                                              mount_loc + "boot")
+                boot_folder = mount_loc + "boot"
+                if not os.path.exists(boot_folder):
+                    os.makedirs(boot_folder)
+                plugins.mount_partition(copier.target, copier.lvm_target,
+                                        boot_partition, boot_folder)
                 boot_mounted_here = True
 
             print("Updating Grub")

@@ -25,6 +25,7 @@ import sys
 import glob
 import parse
 import re
+import tempfile
 
 MOUNT_POINT = "/mnt"
 
@@ -306,7 +307,6 @@ class DeviceManager:
 
             proc_formal = subprocess.Popen(
                 ["df", "--block-size=512"], stdout=subprocess.PIPE)
-            print(self.part_mask.format(self.device, partition_num))
             proc = subprocess.Popen(
                 ["grep", self.part_mask.format(self.device, partition_num)],
                 stdout=subprocess.PIPE,
@@ -428,15 +428,26 @@ class DeviceManager:
                     self.device, "Error getting device partition information.",
                     str(output, "utf-8"))
 
-            for line in str(output, "utf-8").split("\n"):
-                if line.strip().startswith(
-                        self.part_mask.format(self.device, partition_num)):
-                    words = line.split()
-                    loc = 4  # the code is in the 5th column
-                    if "*" in line:
-                        loc += 1
-                        # if the partition is bootable, then there
-                        # is an extra column before the code
+            lines = str(output, "utf-8").split("\n")
+            result = list(
+                filter(lambda x: x.strip().startswith("Device"), lines))
+            header_line = result[0].strip().split()
+            for idx, val in enumerate(header_line):
+                if val == "Id":
+                    code_index = idx
+                    break
+            else:
+                raise ValueError("Unsupported fdisk format.")
+
+            part_name = self.part_mask.format(self.device, partition_num)
+            for line in lines:
+                if line.strip().startswith(part_name):
+                    words = line.strip().split()
+                    loc = code_index  # the code is in the 5th column
+                    if "*" not in line:
+                        loc -= 1
+                        # if the partition is not bootable the column for the
+                        # boot header is not seperated.
 
                     return words[loc]
 
@@ -785,8 +796,7 @@ class LVMDeviceManager(DeviceManager):
                 self.device, "Error reading free space in volume group.",
                 str(output, "utf-8"))
 
-        result = str(output, "utf-8").strip(
-        )[0:-1]
+        result = str(output, "utf-8").strip()[0:-1]
         # The final character in the results is a unit, in this case "S"
         return int(result)
 
@@ -796,16 +806,25 @@ class DeviceCopier:
 
     :param source: the drive identifier (/dev/sda or such) of the source drive.
     :param target: the drive identifier (/dev/sdb or such) of the target drive.
+    :param lvm_source: the name or :py:class:`~.LVMDeviceManager` object
+                       representing the source LVM. If None no LVM is copied.
+    :param lvm_target: the name or :py:class:`~.LVMDeviceManager` object
+                       representing the target LVM. If None no LVM is copied.
     """
 
-    def __init__(self, source, target):
-        """:source the drive identifier (/dev/sda or such) of the source drive
-        :target the drive identifier (/dev/sdb or such) of the target drive
-        """
+    def __init__(self, source, target, lvm_source=None, lvm_target=None):
         self.source = source if isinstance(
             source, DeviceManager) else DeviceManager(source)
         self.target = target if isinstance(
             target, DeviceManager) else DeviceManager(target)
+        if lvm_source is not None and lvm_target is not None:
+            self.lvm_source = lvm_source if isinstance(
+                lvm_source, LVMDeviceManager) else LVMDeviceManager(lvm_source)
+            self.lvm_target = lvm_target if isinstance(
+                lvm_target, LVMDeviceManager) else LVMDeviceManager(lvm_target)
+        else:
+            self.lvm_source = None
+            self.lvm_target = None
         self.uuid_dict = None
 
     def get_uuid_dict(self):
@@ -852,7 +871,18 @@ class DeviceCopier:
 
                 uuids[source_part_uuid] = self.target.get_part_uuid(i)
 
-                self.uuid_dict = uuids
+            if self.lvm_source is not None:
+                source_vg = parse.parse("/dev/{0}", self.lvm_source.device)[0]
+                target_vg = parse.parse("/dev/{0}", self.lvm_target.device)[0]
+                source_name = source_vg.replace("-", "--")
+                target_name = target_vg.replace("-", "--")
+                lvm_mask = "{0}-{1}"
+                for i in self.lvm_source.get_partitions():
+                    uuids[lvm_mask.format(source_name, i)] = lvm_mask.format(
+                        target_name, i)
+
+            self.uuid_dict = uuids
+            LOGGER.debug("UUID Dict: " + str(uuids))
             return uuids
         else:
             return self.uuid_dict
@@ -1076,27 +1106,27 @@ class DeviceCopier:
     def _transfer_lvm(self, difference):
         # In general, partitions and logical volumes (lvs) are synonymous in
         # this method
-        for j in self.target.get_partitions():
-            if self.target.mount_point(j) is not None:
-                self.target.unmount(j)
+        for j in self.lvm_target.get_partitions():
+            if self.lvm_target.mount_point(j) is not None:
+                self.lvm_target.unmount(j)
             LOGGER.debug("Deleting " + j)
             remove_proc = subprocess.Popen(
-                ["lvremove", "-f", self.target.device + "/" + j],
+                ["lvremove", "-f", self.lvm_target.device + "/" + j],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
             output, error = remove_proc.communicate()
             if remove_proc.returncode != 0:
                 raise weresync.exception.DeviceError(
-                    self.target.device,
+                    self.lvm_target.device,
                     "Error removing logical volume from target.",
                     str(output, "utf-8"))
 
-        lvs = self.source.get_partitions()
-        difference -= self.source.get_empty_space()
+        lvs = self.lvm_source.get_partitions()
+        difference -= self.lvm_source.get_empty_space()
         for i in lvs:
-            drive_size = self.source.get_partition_size(i)
+            drive_size = self.lvm_source.get_partition_size(i)
             try:
-                part_used = self.source.get_partition_used(i)
+                part_used = self.lvm_source.get_partition_used(i)
             except weresync.exception.DeviceError:
                 part_used = drive_size
 
@@ -1113,19 +1143,23 @@ class DeviceCopier:
 
             command = [
                 "lvcreate", "--size", str(part_size) + "S", "-n", i,
-                self.target.device
+                self.lvm_target.device
             ]
             LOGGER.debug("lvcreate command: " + str(command))
-            copy_proc = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            output, error = copy_proc.communicate()
-            LOGGER.debug("Output for " + i + ": " + str(output, "utf-8"))
-            if copy_proc.returncode != 0:
-                raise weresync.exception.DeviceError(
-                    self.target.device, "Error creating new logical volume.",
-                    str(output, "utf-8"))
+            with tempfile.TemporaryFile() as tmp:
+                copy_proc = subprocess.Popen(
+                    command, stdout=tmp, stderr=subprocess.STDOUT)
+                proc_output, error = copy_proc.communicate()
+                tmp.seek(0)
+                output = tmp.read()
+                LOGGER.debug("Output for " + i + ": " + str(output, "utf-8"))
+                if copy_proc.returncode != 0:
+                    raise weresync.exception.DeviceError(
+                        self.lvm_target.device,
+                        "Error creating new logical volume.",
+                        str(output, "utf-8"))
 
-    def format_partitions(self, ignore_errors=True, callback=None):
+    def format_partitions(self, ignore_errors=True, callback=None, lvm=False):
         """Goes through each partition in the source drive and formats the
         corresponding partition in the target drive to the same thing.
 
@@ -1135,18 +1169,26 @@ class DeviceCopier:
                                exceptions will be propogated. Defaults to True.
         :param callback: If not None, this function should be a function that
                          accepts a float between 0 and 1 to update the
-                         progress."""
-        partitions = self.source.get_partitions()
+                         progress.
+        :param lvm: Whether or not to use the lvm managers."""
+        if lvm:
+            source_manager = self.lvm_source
+            target_manager = self.lvm_target
+        else:
+            source_manager = self.source
+            target_manager = self.target
+
+        partitions = source_manager.get_partitions()
         for i in partitions:
             try:
-                part_type = self.source.get_partition_file_system(i)
+                part_type = source_manager.get_partition_file_system(i)
                 if callback is not None:
-                    drive_size = self.target.get_drive_size()
+                    drive_size = target_manager.get_drive_size()
                     complete = 0.0
                 if part_type is not None:
-                    self.target.set_partition_file_system(i, part_type)
+                    target_manager.set_partition_file_system(i, part_type)
                     if callback is not None:
-                        part_size = self.target.get_partition_size(i)
+                        part_size = target_manager.get_partition_size(i)
                         complete += part_size / drive_size
                         LOGGER.debug("Callback:\nDrive Size: {0}\n"
                                      "Part Size: {1}\n"
@@ -1162,8 +1204,8 @@ class DeviceCopier:
                     logging.getLogger("weresync.device").warning(
                         "Creating filesystem for {0} encountered errors. "
                         "Partition type: {1}. Skipped.".format(
-                            self.target.part_mask.format(self.target.device,
-                                                         i), part_type),
+                            target_manager.part_mask.format(
+                                target_manager.device, i), part_type),
                         exc_info=sys.exc_info())
                     logging.getLogger("weresync.device").debug(
                         "Error making file system.", exc_info=sys.exc_info())
@@ -1193,8 +1235,6 @@ class DeviceCopier:
             self._transfer_gpt(source_size - target_size)
         elif source_type == "msdos":
             self._transfer_msdos(source_size - target_size)
-        elif source_type == "lvm":
-            self._transfer_lvm(source_size - target_size)
 
         for i in self.target.get_partitions():
             if self.target.mount_point(i) is not None:
@@ -1205,40 +1245,50 @@ class DeviceCopier:
 
         # the block devices still won't be updated unless the following
         # command is called.
-        # Not necessarily for LVMs
-        if self.target.get_partition_table_type() != "lvm":
-            proc = subprocess.Popen(
-                ["partprobe", self.target.device],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
-            output, error = proc.communicate()
-            if proc.returncode != 0:
-                raise weresync.exception.DeviceError(
-                    self.target.device, "Error reloading partition mappings.",
-                    str(output, "utf-8"))
+        proc = subprocess.Popen(
+            ["partprobe", self.target.device],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+        output, error = proc.communicate()
+        if proc.returncode != 0:
+            raise weresync.exception.DeviceError(
+                self.target.device, "Error reloading partition mappings.",
+                str(output, "utf-8"))
 
         # This weights the progress so 30% comes from creating partition and
         # 70% from formatting.
-        self.format_partitions(
-            callback=lambda prog: (callback(0.3 + prog * 0.7) if callback is
-                                   not None else None)
-        )
+        progress = lambda prog: (callback(0.3 + prog * 0.7) if callback  # noqa
+                                 is not None else None)
+        self.format_partitions(callback=progress)
         # If it's done, it's done
         if callback is not None:
             callback(1.0)
-
         self.uuid_dict = None  # uuids will have been changed.
 
-    def partitions_valid(self):
+    def transfer_lvm_partition(self, resize=True, callback=False):
+        if self.lvm_source is not None:
+            lvm_source_size = self.lvm_source.get_drive_size()
+            lvm_target_size = self.lvm_target.get_drive_size()
+            self._transfer_lvm(lvm_source_size - lvm_target_size)
+            self.format_partitions(callback=callback, lvm=True)
+
+    def partitions_valid(self, lvm=False):
         """Tests if the partitions on the target drive can support copying
         files from the source drive.
 
         :returns: True if no errors found.
         :raises: a :py:class:`~weresync.exception.CopyError` if any part
                  invalid."""
-        source_parts = self.source.get_partitions()
+        if lvm:
+            source_manager = self.lvm_source
+            target_manager = self.lvm_target
+        else:
+            source_manager = self.source
+            target_manager = self.target
+
+        source_parts = source_manager. get_partitions()
         try:
-            target_parts = self.target.get_partitions()
+            target_parts = target_manager.get_partitions()
         except DeviceError as ex:
             raise weresync.exception.CopyError(
                 "Target partitions cannot be found. Invalid.")
@@ -1246,14 +1296,14 @@ class DeviceCopier:
             raise weresync.exception.CopyError(
                 "Partition count on two drives different. Invalid.")
         for i in source_parts:
-            if self.source.get_partition_file_system(
-                    i) != self.target.get_partition_file_system(i):
+            if source_manager.get_partition_file_system(
+                    i) != target_manager.get_partition_file_system(i):
                 raise weresync.exception.CopyError(
                     "File system type for partition {0} does not match. "
                     "Invalid.".format(i))
             try:
-                if self.source.get_partition_used(
-                        i) > self.target.get_partition_size(i):
+                if source_manager.get_partition_used(
+                        i) > target_manager.get_partition_size(i):
                     raise weresync.exception.CopyError(
                         "Information on partition {0} cannot fit on "
                         "corresponding partition on target drive.".format(i))
@@ -1271,23 +1321,32 @@ class DeviceCopier:
 
         return True
 
-    def _copy_fstab(self, mnt_source, mnt_target, excluded_partitions=[]):
+    def _copy_fstab(self, mnt_source, mnt_target, excluded_partitions=[],
+                    lvm=False):
         """Updates files in /etc/fstab to be bootable on the target drive.
+
         :param mnt_source: the directory where source partitions should be
                            mounted.
         :param mnt_target: the directory where target partitions should be
                            mounted.
         :param excluded_partitions: partitions not to search. Defaults to
                                     empty"""
-        for i in self.source.get_partitions():
+        if lvm:
+            source_manager = self.lvm_source
+            target_manager = self.lvm_target
+        else:
+            source_manager = self.source
+            target_manager = self.target
+
+        for i in source_manager.get_partitions():
             source_mounted = False
             target_mounted = False
             try:
                 if i not in excluded_partitions:
-                    source_loc = self.source.mount_point(i)
+                    source_loc = source_manager.mount_point(i)
                     if source_loc is None:
                         try:
-                            self.source.mount_partition(i, mnt_source)
+                            source_manager.mount_partition(i, mnt_source)
                             source_mounted = True
                             source_loc = mnt_source
                         except weresync.exception.DeviceError as ex:
@@ -1302,9 +1361,9 @@ class DeviceCopier:
                         "/"
                         if not source_loc.endswith("/") else "") + "etc/fstab"
                     if os.path.exists(source_fstab_path):
-                        target_loc = self.target.mount_point(i)
+                        target_loc = target_manager.mount_point(i)
                         if target_loc is None:
-                            self.target.mount_partition(i, mnt_target)
+                            target_manager.mount_partition(i, mnt_target)
                             target_mounted = True
                             target_loc = mnt_target
                         with open(source_fstab_path) as source_fstab, open(
@@ -1315,12 +1374,13 @@ class DeviceCopier:
                             target_fstab.write(
                                 "# This file is generated by WereSync. All"
                                 " comments have been copied, but they have not"
-                                " been parsed.\n#Any reference to identifiers "
-                                "during installation may be inaccurate.\n\n")
+                                " been parsed.\n# Any reference to"
+                                " identifiers during installation may be"
+                                " inaccurate.\n\n")
                             for line in source_fstab.readlines():
                                 stripLine = line.strip()
                                 if stripLine == "" or stripLine.startswith(
-                                        "# "):
+                                        "#"):
                                     target_fstab.write(line)
                                     continue
 
@@ -1353,7 +1413,7 @@ class DeviceCopier:
                                             str(output, "utf-8"))
                                     elif proc.returncode != 0:
                                         raise weresync.exception.DeviceError(
-                                            self.source.device,
+                                            source_manager.device,
                                             "Error finding device error for "
                                             "device with id: {0}".format(
                                                 identifier),
@@ -1367,17 +1427,24 @@ class DeviceCopier:
                                     # (comes out to something like
                                     # "/dev/nbd0p{0}").
                                     # Then it can figure it out.
-                                    result = parse.parse(
-                                        self.source.part_mask.format(
-                                            self.source.device, "{0}"),
-                                        str(output, "utf-8")
-                                    )[0]  # the first element contains the
+                                    out = str(output, "utf-8").strip()
+                                    if (self.lvm_source is not None
+                                        and self.lvm_source.device in out):
+                                        source = self.lvm_source
+                                        target = self.lvm_target
+                                    else:
+                                        source = self.source
+                                        target = self.target
+                                    result = parse.parse(source.part_mask.
+                                                         format(source.device,
+                                                                "{0}"), out)[0]
+                                    # the first element contains the
                                     # number
                                     uuid_proc = subprocess.Popen(
                                         [
                                             "blkid",
-                                            self.source.part_mask.format(
-                                                self.target.device, result)
+                                            source.part_mask.format(
+                                                target.device, result)
                                         ],
                                         stdout=subprocess.PIPE,
                                         stderr=subprocess.STDOUT)
@@ -1385,66 +1452,57 @@ class DeviceCopier:
                                         uuid_proc.communicate())
                                     if uuid_proc.returncode == 2:
                                         raise weresync.exception.DeviceError(
-                                            self.target.device,
+                                            target.device,
                                             "Could not find device {0}".format(
-                                                self.target.part_mask.format(
-                                                    self.target.device,
+                                                target.part_mask.
+                                                format(
+                                                    target.device,
                                                     result)),
                                             str(uuid_output, "utf-8"))
                                     elif uuid_proc.returncode != 0:
                                         raise weresync.exception.DeviceError(
-                                            self.target.device,
+                                            target.device,
                                             "Error finding uuid for device "
                                             "{0}".format(
-                                                self.target.part_mask.fomrat(
-                                                    self.target.device,
+                                                target.part_mask.
+                                                format(
+                                                    target.device,
                                                     result)),
                                             str(uuid_output, "utf-8"))
                                     ids = str(uuid_output, "utf-8").split()
                                     for val in ids:
                                         if val.startswith("UUID"):
-                                            words[0] = val.replace(
-                                                '"',
-                                                '')
+                                            words[0] = val.replace('"', '')
                                             # Have to remove the double
                                             # quotes from blkid's output.
                                             break
-                                    target_fstab.write(" ".join(words) + "\n")
+                                elif self.lvm_source is not None:
+                                    words[0] = multireplace(
+                                        words[0], self.get_uuid_dict())
+                                target_fstab.write(" ".join(words) + "\n")
             finally:
                 if source_mounted:
-                    self.source.unmount_partition(i)
+                    source_manager.unmount_partition(i)
                 if target_mounted:
-                    self.source.unmount_partition(i)
+                    source_manager.unmount_partition(i)
 
-    def copy_files(self,
-                   mnt_source,
-                   mnt_target,
-                   excluded_partitions=[],
-                   ignore_failures=True,
-                   rsync_args=DEFAULT_RSYNC_ARGS,
-                   callback=None):
-        """Copies all files from source to target drive, doing one partition
-        at a time. This assumes that the two drives have equivalent partition
-        mappings, i.e. that the data on partition 1 of the source drive should
-        be on partition 1 of the target drive.
-
-        :param mnt_source: The directory to mount partitions from the source
-                           drive on.
-        :param mnt_target: The directory to mount partitions from the target
-                           drive on.
-        :param excluded_partitions: A list containing the partitions to not
-                                    copy. Defaults to empty.
-        :param ignore_failures: If True, errors encountered for a partition
-                                will not cause the function to exit, but we
-                                instead cause a warning to be logged. Defaults
-                                to true.
-        :param callaback: If not None, a function with the signature
-                          ``callback(int, float)``, where the int represents
-                          partition number and float represents progress. If
-                          an error occurs, the float will be negative. If the
-                          float should pulse, it wil return True."""
-
-        for i in self.source.get_partitions():
+    def _copy_files(self,
+                    mnt_source,
+                    mnt_target,
+                    excluded_partitions,
+                    ignore_failures,
+                    rsync_args,
+                    callback,
+                    lvm=False):
+        """This is an internal method used for copying files. See the
+        main `copy_files` method for documentation."""
+        if lvm:
+            source_manager = self.lvm_source
+            target_manager = self.lvm_target
+        else:
+            source_manager = self.source
+            target_manager = self.target
+        for i in source_manager.get_partitions():
             source_mounted = False
             target_mounted = False
             try:
@@ -1452,19 +1510,19 @@ class DeviceCopier:
                 if i in excluded_partitions:
                     continue
 
-                source_loc = self.source.mount_point(i)
+                source_loc = source_manager.mount_point(i)
                 if source_loc is None:
-                    self.source.mount_partition(i, mnt_source)
+                    source_manager.mount_partition(i, mnt_source)
                     source_mounted = True
                     source_loc = mnt_source
-                target_loc = self.target.mount_point(i)
+                target_loc = target_manager.mount_point(i)
                 if target_loc is None:
-                    self.target.mount_partition(i, mnt_target)
+                    target_manager.mount_partition(i, mnt_target)
                     target_mounted = True
                     target_loc = mnt_target
 
                 LOGGER.info("Starting rsync process for partition {0}.".format(
-                    self.source.device))
+                    source_manager.device))
                 command_args = ["rsync"] + shlex.split(rsync_args) + [
                     '--exclude=' + x + ''
                     for x in [
@@ -1521,8 +1579,8 @@ class DeviceCopier:
                 if ignore_failures:
                     LOGGER.warning(
                         "Error copying data for partition {0} from device {1} "
-                        "to {2}.".format(i, self.source.device,
-                                         self.target.device))
+                        "to {2}.".format(i, source_manager.device,
+                                         target_manager.device))
                     LOGGER.debug("Error info.", exc_info=sys.exc_info())
                     if callback is not None:
                         callback(i, -1.0)
@@ -1530,10 +1588,43 @@ class DeviceCopier:
                     raise exe
             finally:
                 if source_mounted:
-                    self.source.unmount_partition(i)
+                    source_manager.unmount_partition(i)
                 if target_mounted:
-                    self.target.unmount_partition(i)
+                    target_manager.unmount_partition(i)
         print("Finished copying files.")
+
+    def copy_files(self,
+                   mnt_source,
+                   mnt_target,
+                   excluded_partitions=[],
+                   ignore_failures=True,
+                   rsync_args=DEFAULT_RSYNC_ARGS,
+                   callback=None):
+        """Copies all files from source to target drive, doing one partition
+        at a time. This assumes that the two drives have equivalent partition
+        mappings, i.e. that the data on partition 1 of the source drive should
+        be on partition 1 of the target drive.
+
+        :param mnt_source: The directory to mount partitions from the source
+                           drive on.
+        :param mnt_target: The directory to mount partitions from the target
+                           drive on.
+        :param excluded_partitions: A list containing the partitions to not
+                                    copy. Defaults to empty.
+        :param ignore_failures: If True, errors encountered for a partition
+                                will not cause the function to exit, but we
+                                instead cause a warning to be logged. Defaults
+                                to true.
+        :param callaback: If not None, a function with the signature
+                          ``callback(int, float)``, where the int represents
+                          partition number and float represents progress. If
+                          an error occurs, the float will be negative. If the
+                          float should pulse, it wil return True."""
+        self._copy_files(mnt_source, mnt_target, excluded_partitions,
+                         ignore_failures, rsync_args, callback, lvm=False)
+        if self.lvm_source is not None:
+            self._copy_files(mnt_source, mnt_target, excluded_partitions,
+                             ignore_failures, rsync_args, callback, lvm=True)
 
     def make_bootable(self,
                       plugin_name,
@@ -1585,6 +1676,15 @@ class DeviceCopier:
             except DeviceError as ex:
                 LOGGER.warning("Error copying fstab. Continuing anyway.")
                 LOGGER.debug("Info: ", exc_info=sys.exc_info())
+
+            if self.lvm_source is not None:
+                try:
+                    self._copy_fstab(source_mnt, target_mnt,
+                                     excluded_partitions, lvm=True)
+                except DeviceError as ex:
+                    LOGGER.warning("Error copying fstab on LVM. Continuing"
+                                   " anyway.")
+                    LOGGER.debug("Info: ", exc_info=sys.exc_info())
 
             if plugin is not None:
                 plugin.install_bootloader(source_mnt, target_mnt, self,
