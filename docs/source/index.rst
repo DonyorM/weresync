@@ -53,6 +53,7 @@ Contents:
    weresync
    api
    bootloader
+   translation
    issues
 
 ============
