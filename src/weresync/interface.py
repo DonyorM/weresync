@@ -31,6 +31,9 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_LOG_LOCATION = "/var/log/weresync/weresync.log"
 """The default location for WereSync's log files."""
+LANGUAGES = []
+"""Currently translated languages. See `here <translation.html>`_ for more
+information."""
 
 
 def enable_localization():
@@ -38,7 +41,7 @@ def enable_localization():
     translation."""
     LOGGER.debug("Enabling localization")
     lodir = os.path.dirname(__file__) + "/../resources/locale"
-    es = gettext.translation("weresync", localedir=lodir, languages=["ru"])
+    es = gettext.translation("weresync", localedir=lodir, languages=LANGUAGES)
     es.install()
 
 
