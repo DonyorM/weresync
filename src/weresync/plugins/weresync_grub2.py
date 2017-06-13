@@ -102,7 +102,7 @@ class GrubPlugin(IBootPlugin):
                                         boot_partition, boot_folder)
                 boot_mounted_here = True
 
-            print("Updating Grub")
+            print(_("Updating Grub"))
             grub_cfg = mount_loc + "boot/grub/grub.cfg"
             old_perms = os.stat(grub_cfg)[0]
             try:
@@ -117,7 +117,7 @@ class GrubPlugin(IBootPlugin):
             finally:
                 os.chmod(grub_cfg, old_perms)
 
-            print("Installing Grub")
+            print(_("Installing Grub"))
             grub_command = ["grub-install",
                             "--boot-directory=" + mount_loc + "boot",
                             "--recheck",
@@ -134,14 +134,14 @@ class GrubPlugin(IBootPlugin):
                                   str(install_output,
                                       "utf-8"))
 
-            print("Consider running update-grub on your backup. WereSync"
+            print(_("Consider running update-grub on your backup. WereSync"
                   " copies can sometimes fail to capture all the nuances of a"
-                  " complex system.")
-            print("Cleaning up.")
+                  " complex system."))
+            print(_("Cleaning up."))
         finally:
             # This block cleans up any mounted partitions
             if boot_mounted_here:
                 copier.target.unmount_partition(boot_partition)
             if mounted_here:
                 copier.target.unmount_partition(root_partition)
-        print("Finished!")
+        print(_("Finished!"))

@@ -25,11 +25,21 @@ import os
 import sys
 import argparse
 import subprocess
+import gettext
 
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_LOG_LOCATION = "/var/log/weresync/weresync.log"
 """The default location for WereSync's log files."""
+
+
+def enable_localization():
+    """Activates the `gettext` module to start internalization and enable
+    translation."""
+    LOGGER.debug("Enabling localization")
+    lodir = os.path.dirname(__file__) + "/../resources/locale"
+    es = gettext.translation("weresync", localedir=lodir, languages=["ru"])
+    es.install()
 
 
 def check_python_version():
@@ -141,14 +151,14 @@ def copy_partitions(copier, part_callback=None, lvm=False):
                    the copying with.
     :param part_callback: see the documentation for :py:func:`~.copy_drive`"""
     try:
-        print("Checking partition validity.")
+        print(_("Checking partition validity."))
         copier.partitions_valid(lvm)
         if part_callback is not None:
             part_callback(1.0)
             LOGGER.info("Drives are compatible")
     except CopyError as ex:
         LOGGER.warning(ex.message)
-        print("Partitions invalid!\nCopying drive partition table.")
+        print(_("Partitions invalid!\nCopying drive partition table."))
         LOGGER.warning("Drives are incompatible.")
         if lvm:
             copier.transfer_lvm_partition(callback=part_callback)
@@ -297,7 +307,7 @@ def copy_drive(source,
             os.makedirs(target_dir, exist_ok=True)
             mount_points = (source_dir, target_dir)
 
-        print("Beginning to copy files.")
+        print(_("Beginning to copy files."))
         copier.copy_files(
             mount_points[0],
             mount_points[1],
@@ -305,17 +315,17 @@ def copy_drive(source,
             ignore_copy_failures,
             rsync_args,
             callback=copy_callback)
-        print("Finished copying files.")
+        print(_("Finished copying files."))
 
-        print("Making bootable")
+        print(_("Making bootable"))
         try:
             copier.make_bootable(bootloader, mount_points[0], mount_points[1],
                                  excluded_partitions, root_partition,
                                  boot_partition, efi_partition, boot_callback)
         except DeviceError as ex:
-            print("Error making drive bootable. All files should be fine.")
+            print(_("Error making drive bootable. All files should be fine."))
             return ex
-        print("All done, enjoy your drive!")
+        print(_("All done, enjoy your drive!"))
         return True
     finally:
 
@@ -332,6 +342,8 @@ def main():
     """The entry point for the command line function. This uses argparse to
     parse arguments to call call :py:func:`.copy_drive` with. For help use
     "weresync -h" in a commandline after installation."""
+    enable_localization()
+
     try:
         check_python_version()
     except InvalidVersionError as ex:
@@ -346,108 +358,110 @@ def main():
         pluginNames = []
         for pluginInfo in manager.getAllPlugins():
             pluginNames.append(pluginInfo.plugin_object.name)
-        epilog_string = "Bootloader plugins found: " + ", ".join(pluginNames)
+        epilog_string = (_("Bootloader plugins found: ")
+                         + ", ".join(pluginNames))
         parser = argparse.ArgumentParser(epilog=epilog_string)
         parser.add_argument(
             "source",
-            help="The drive to copy data from. This drive will not be edited.")
+            help=_("The drive to copy data from. This drive will not be"
+                   " edited."))
         parser.add_argument(
             "target",
-            help=("The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE "
-                  "ERASED.")
+            help=_("The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE "
+                   "ERASED.")
         )
         parser.add_argument(
             "-C",
             "--check-and-partition",
             action="store_true",
-            help=("Check if partitions are valid and re-partition drive to "
-                  "proper partitions if they are not.")
+            help=_("Check if partitions are valid and re-partition drive to "
+                   "proper partitions if they are not.")
         )
         parser.add_argument(
             "-s",
             "--source-mask",
-            help=("A string of format '{0}{1}' where {0} represents drive "
-                  "identifier and {1} represents partition number to point to "
-                  "partition block files for the source drive.")
+            help=_("A string of format '{0}{1}' where {0} represents drive "
+                   "identifier and {1} represents partition number to point "
+                   "to partition block files for the source drive.")
         )
         parser.add_argument(
             "-t",
             "--target-mask",
-            help="A string of format '{0}{1}' where {0} represents drive "
-            "identifier and {1} represents partition number to point to "
-            "partition block files for the target drive."
-        )
+            help=_("A string of format '{0}{1}' where {0} represents drive "
+                   "identifier and {1} represents partition number to point "
+                   "to partition block files for the target drive."))
         parser.add_argument(
             "-e",
             "--excluded-partitions",
-            help=("A comment separated list of partitions of the source drive "
-                  "to apply no actions on.perated list of partitions of the  "
-                  "source drive to apply no actions on.")
+            help=_("A comment separated list of partitions of the source "
+                   "drive to apply no actions on.perated list of partitions "
+                   "of the source drive to apply no actions on.")
         )
         parser.add_argument(
             "-b",
             "--break-on-error",
             action="store_false",
-            help=("Causes program to break whenever a partition cannot be "
-                  "copied, including uncopyable partitions such as swap"
-                  " files. Not recommended.")
+            help=_("Causes program to break whenever a partition cannot be "
+                   "copied, including uncopyable partitions such as swap"
+                   " files. Not recommended.")
         )
         parser.add_argument(
             "-g",
             "--root-partition",
             type=int,
-            help="The partition mounted on /.")
+            help=_("The partition mounted on /."))
         parser.add_argument(
             "-B",
             "--boot-partition",
             type=int,
-            help="Partition which should be mounted on /boot")
+            help=_("Partition which should be mounted on /boot"))
         parser.add_argument(
             "-E",
             "--efi-partition",
             type=int,
-            help="Partition which should be mounted on /boot/efi")
+            help=_("Partition which should be mounted on /boot/efi"))
         parser.add_argument(
             "-m",
             "--source-mount",
-            help=("Folder where partitions from the source drive should be "
-                  "mounted.")
+            help=_("Folder where partitions from the source drive should be "
+                   "mounted.")
         )
         parser.add_argument(
             "-M",
             "--target-mount",
-            help="Folder where partitions from source drive should be mounted."
+            help=_("Folder where partitions from source drive should be"
+                   " mounted.")
         )
         parser.add_argument(
             "-r",
             "--rsync-args",
-            help="List of arguments passed to rsync. Defaults to: " +
+            help=_("List of arguments passed to rsync. Defaults to: ") +
             device.DEFAULT_RSYNC_ARGS,
             default=device.DEFAULT_RSYNC_ARGS)
         parser.add_argument(
             "-L",
             "--bootloader",
-            help=("Passed to decide what boootloader plugin to use. See below "
-                  "for list of plugins. Defaults to simply changing the UUIDs "
-                  "of files in /boot."),
+            help=_("Passed to decide what boootloader plugin to use. See "
+                   "below for list of plugins. Defaults to simply changing "
+                   "the UUIDs of files in /boot."),
             default="uuid_copy")
         parser.add_argument(
             "-l",
             "--lvm",
-            help="The name of the source logical volume.",
+            help=_("The name of the source logical volume."),
             nargs="+")
         group = parser.add_mutually_exclusive_group()
         group.add_argument(
             "-v",
             "--verbose",
-            help="Prints expanded output.",
+            help=_("Prints expanded output."),
             action="store_const",
             dest="loglevel",
             const=logging.INFO)
         group.add_argument(
             "-d",
             "--debug",
-            help="Prints large output. Mainly helpful for developers.",
+            help=_("Prints large output. Mainly helpful for developers."),
             action="store_const",
             dest="loglevel",
             const=logging.DEBUG)
@@ -459,8 +473,8 @@ def main():
         start_logging_handler(stream_level=loglevel)
         mount_points = (args.source_mount, args.target_mount)
         if args.lvm is not None and len(args.lvm) > 2:
-            LOGGER.warning("More than two lvm options added. Please give "
-                           "either one or two options.")
+            LOGGER.warning(_("More than two lvm options added. Please give "
+                           "either one or two options."))
             sys.exit(1)
 
         lvm_source = args.lvm[0] if args.lvm is not None else None

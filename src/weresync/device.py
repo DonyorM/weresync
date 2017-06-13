@@ -1591,7 +1591,7 @@ class DeviceCopier:
                     source_manager.unmount_partition(i)
                 if target_mounted:
                     target_manager.unmount_partition(i)
-        print("Finished copying files.")
+        print(_("Finished copying files."))
 
     def copy_files(self,
                    mnt_source,

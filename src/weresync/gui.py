@@ -24,8 +24,9 @@ import os
 import logging
 import logging.handlers
 import threading
+import gettext
 gi.require_version("Gtk", '3.0')
-from gi.repository import Gtk, GLib, GObject # noqa
+from gi.repository import Gtk, GLib, GObject  # noqa
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def create_help_box(parent, text, title=""):
         halign=Gtk.Align.START,
         xpad=DEFAULT_HORIZONTAL_PADDING,
         ypad=DEFAULT_VERTICAL_PADDING)
-    help.set_markup("<a href=\"#\">What's this?</a>")
+    help.set_markup(_("<a href=\"#\">What's this?</a>"))
 
     def help_click(*args):
         dialog = Gtk.MessageDialog(parent, 0, Gtk.MessageType.INFO,
@@ -82,8 +83,10 @@ def create_help_box(parent, text, title=""):
 
 
 def generate_drive_list():
-    proc = subprocess.Popen(["lsblk", "-dnoNAME"], stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(
+        ["lsblk", "-dnoNAME"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
     output, _ = proc.communicate()
     if proc.returncode != 0:
         LOGGER.critical("Error reading block list.\n" + output)
@@ -93,7 +96,8 @@ def generate_drive_list():
     ]
     try:
         lvm_proc = subprocess.Popen(
-            ["vgs", "-o", "name", "--noheadings"], stdout=subprocess.PIPE,
+            ["vgs", "-o", "name", "--noheadings"],
+            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         lvm_output, _ = lvm_proc.communicate()
         if lvm_proc.returncode != 0:
@@ -136,7 +140,7 @@ class WereSyncWindow(Gtk.Window):
         self.grid = Gtk.Grid()
         self.add(self.grid)
         self.source_label = Gtk.Label(
-            label="Source Drive: ",
+            label=_("Source Drive: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -150,7 +154,7 @@ class WereSyncWindow(Gtk.Window):
         self.grid.attach_next_to(self.source_combo, self.source_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.target_label = Gtk.Label(
-            label="Target Drive: ",
+            label=_("Target Drive: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -162,18 +166,18 @@ class WereSyncWindow(Gtk.Window):
         self.grid.attach_next_to(self.target_combo, self.target_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.copy_partitions_button = Gtk.CheckButton(
-            label="Copy partitions if target partitions are invalid.")
+            label=_("Copy partitions if target partitions are invalid."))
         set_margin(self.copy_partitions_button)
         self.grid.attach_next_to(self.copy_partitions_button,
                                  self.target_label, Gtk.PositionType.BOTTOM, 2,
                                  1)
         self.lvm_button = Gtk.CheckButton(
-            label="Source and target are logical volume groups.")
+            label=_("Source and target are logical volume groups."))
         self.grid.attach_next_to(self.lvm_button, self.copy_partitions_button,
                                  Gtk.PositionType.BOTTOM, 2, 1)
         set_margin(self.lvm_button)
         self.bootloader_label = Gtk.Label(
-            label="Bootloader Plugin: ",
+            label=_("Bootloader Plugin: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -182,10 +186,12 @@ class WereSyncWindow(Gtk.Window):
         self.bootloader_combo.set_entry_text_column(1)
         self.bootloader_combo.set_active(uuid_index)
         self.bootloader_help = create_help_box(
-            self, "This is the plugin which will attempt to make your clone"
-            " bootable. Select the plugin which corresponds to the bootloader"
-            " you want to install. If you are unsure what to choose, pick"
-            " 'UUID Copy'.", "Bootloader Plugin")
+            self,
+            _("This is the plugin which will attempt to make your clone"
+              " bootable. Select the plugin which corresponds to the "
+              "bootloader"
+              " you want to install. If you are unsure what to choose, pick"
+              " 'UUID Copy'."), _("Bootloader Plugin"))
         self.grid.attach_next_to(self.bootloader_label, self.lvm_button,
                                  Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.bootloader_combo, self.bootloader_label,
@@ -193,7 +199,7 @@ class WereSyncWindow(Gtk.Window):
         self.grid.attach_next_to(self.bootloader_help, self.bootloader_combo,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.efi_partition_label = Gtk.Label(
-            label="EFI Partition Number: ",
+            label=_("EFI Partition Number: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -206,15 +212,16 @@ class WereSyncWindow(Gtk.Window):
                                  self.efi_partition_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.efi_help = create_help_box(
-            self, "Enter the partition number of your EFI partition.\n"
-            "So if your efi partition is found on /dev/sda1,"
-            " enter 1.\n"
-            "If you are not running a UEFI system, leave this blank.",
-            "EFI Partition")
+            self,
+            _("Enter the partition number of your EFI partition.\n"
+              "So if your efi partition is found on /dev/sda1,"
+              " enter 1.\n"
+              "If you are not running a UEFI system, leave this blank."),
+            _("EFI Partition"))
         self.grid.attach_next_to(self.efi_help, self.efi_partition_entry,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.bootloader_partition_label = Gtk.Label(
-            label="Bootloader Partition Number: ",
+            label=_("Bootloader Partition Number: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -226,31 +233,31 @@ class WereSyncWindow(Gtk.Window):
                                  self.bootloader_partition_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.bootloader_help = create_help_box(
-            self, "Enter the partition number of the partition"
-            " to install the bootloader on. This is generally the partition "
-            "mounted on /\n"
-            "So if your root directory is /dev/sda2, enter 2.",
-            "Bootloader Partition")
+            self,
+            _("Enter the partition number of the partition"
+              " to install the bootloader on. This is generally the partition "
+              "mounted on /\n"
+              "So if your root directory is /dev/sda2, enter 2."),
+            _("Bootloader Partition"))
         self.grid.attach_next_to(self.bootloader_help,
                                  self.bootloader_partition_entry,
                                  Gtk.PositionType.RIGHT, 1, 1)
         # Start adding advanced options
-        self.expander = Gtk.Expander(label="Advanced Options")
+        self.expander = Gtk.Expander(label=_("Advanced Options"))
         set_margin(self.expander)
         self.expander.set_resize_toplevel(True)
         self.expand_grid = Gtk.Grid()
         self.expander.add(self.expand_grid)
         self.expander.set_hexpand(True)
-        self.ignore_errors = Gtk.CheckButton(
-            label="Ignore errors during copying. If off, common errors often "
-            "stop the clone."
-        )
+        self.ignore_errors = Gtk.CheckButton(label=_(
+            "Ignore errors during copying. If off, common errors often "
+            "stop the clone."))
         self.ignore_errors.set_active(True)
         set_margin(self.ignore_errors)
         self.expand_grid.attach(self.ignore_errors, 1, 1, 3, 1)
 
         self.source_part_mask_label = Gtk.Label(
-            label="Source Partition Mask: ",
+            label=_("Source Partition Mask: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -265,17 +272,16 @@ class WereSyncWindow(Gtk.Window):
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.part_mask_help = create_help_box(
             self,
-            "A string that controls the how partitions are found on the file "
-            "system. It should have two placeholders: "
-            "{0} for the device name and {1} for the partition number.\n"
-            "So if you have /dev/loop0 and partition 1 is /dev/loop0p1, the "
-            "part_mask should be '{0}p{1}'",
-            "Partition Mask")
+            _("A string that controls the how partitions are found on the  "
+              "file system. It should have two placeholders: "
+              "{0} for the device name and {1} for the partition number.\n"
+              "So if you have /dev/loop0 and partition 1 is /dev/loop0p1, the "
+              "part_mask should be '{0}p{1}'"), _("Partition Mask"))
         self.expand_grid.attach_next_to(self.part_mask_help,
                                         self.source_part_mask_entry,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.target_part_mask_label = Gtk.Label(
-            label="Target Partition Mask: ",
+            label=_("Target Partition Mask: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -289,7 +295,7 @@ class WereSyncWindow(Gtk.Window):
                                         self.target_part_mask_label,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.excluded_label = Gtk.Label(
-            label="Excluded Partitions: ",
+            label=_("Excluded Partitions: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -303,16 +309,16 @@ class WereSyncWindow(Gtk.Window):
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.excluded_help = create_help_box(
             self,
-            "A comma separated list of partition numbers that should not be "
-            "copied or searched.\n"
-            "If partitions partitions are copied, they will still be copied.",
-            "Excluded Partitions")
+            _("A comma separated list of partition numbers that should not be "
+              "copied or searched.\n"
+              "If partitions partitions are copied, they will still be copied."
+              ), _("Excluded Partitions"))
         self.expand_grid.attach_next_to(self.excluded_help,
                                         self.excluded_entry,
                                         Gtk.PositionType.RIGHT, 1, 1)
 
         self.boot_part_label = Gtk.Label(
-            label="Boot Partition: ",
+            label=_("Boot Partition: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -324,12 +330,13 @@ class WereSyncWindow(Gtk.Window):
                                         self.boot_part_label,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.boot_help = create_help_box(
-            self, "The number of the partition mounted on /boot.",
-            "Boot Partition")
+            self,
+            _("The number of the partition mounted on /boot."),
+            _("Boot Partition"))
         self.expand_grid.attach_next_to(self.boot_help, self.boot_part_entry,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.rsync_label = Gtk.Label(
-            label="Rsync Arguments: ",
+            label=_("Rsync Arguments: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -340,13 +347,14 @@ class WereSyncWindow(Gtk.Window):
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.rsync_help = create_help_box(
             self,
-            "Enter the arguments to pass the rsync program. For more "
-            "information see <a href=\"https://download.samba.org/pub/rsync/rsync.html# Options%20Summary\">the rsync website</a>.", # noqa
-            "Rsync Arguments")
+            _("Enter the arguments to pass the rsync program. For more "
+              "information see <a href=\"https://download.samba.org/pub/rsync/rsync.html# Options%20Summary\">the rsync website</a>."  # noqa
+              ),  # noqa
+            _("Rsync Arguments"))
         self.expand_grid.attach_next_to(self.rsync_help, self.rsync_entry,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.source_mount_label = Gtk.Label(
-            label="Source Drive Mount Point: ",
+            label=_("Source Drive Mount Point: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -354,26 +362,27 @@ class WereSyncWindow(Gtk.Window):
                                         self.rsync_label,
                                         Gtk.PositionType.BOTTOM, 1, 1)
         self.source_mount_entry = Gtk.FileChooserButton(
-            title="Source Drive Mount Folder",
+            title=_("Source Drive Mount Folder"),
             action=Gtk.FileChooserAction.SELECT_FOLDER, )
         self.expand_grid.attach_next_to(self.source_mount_entry,
                                         self.source_mount_label,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.mount_help = create_help_box(
             self,
-            "These are the folders that the drives to be copied will be "
-            "mounted in. If unset, WereSync will generate random folders in "
-            "the /tmp directory. Generally this can be unset.",
-            "Drive Mount Point.")
-        self.expand_grid.attach_next_to(
-            self.mount_help, self.source_mount_entry, Gtk.PositionType.RIGHT,
-            1, 1)
-        self.target_mount_label = Gtk.Label(label="Target Drive Mount Point: ")
+            _("These are the folders that the drives to be copied will be "
+              "mounted in. If unset, WereSync will generate random folders in "
+              "the /tmp directory. Generally this can be unset."),
+            _("Drive Mount Point."))
+        self.expand_grid.attach_next_to(self.mount_help,
+                                        self.source_mount_entry,
+                                        Gtk.PositionType.RIGHT, 1, 1)
+        self.target_mount_label = Gtk.Label(
+            label=_("Target Drive Mount Point: "))
         self.expand_grid.attach_next_to(self.target_mount_label,
                                         self.source_mount_label,
                                         Gtk.PositionType.BOTTOM, 1, 1)
         self.target_mount_entry = Gtk.FileChooserButton(
-            title="Target Drive Mount Folder",
+            title=_("Target Drive Mount Folder"),
             action=Gtk.FileChooserAction.SELECT_FOLDER)
         self.expand_grid.attach_next_to(self.target_mount_entry,
                                         self.target_mount_label,
@@ -383,7 +392,7 @@ class WereSyncWindow(Gtk.Window):
         self.grid.attach_next_to(self.expander,
                                  self.bootloader_partition_label,
                                  Gtk.PositionType.BOTTOM, 3, 1)
-        self.start = Gtk.Button(label="Start Clone")
+        self.start = Gtk.Button(label=_("Start Clone"))
         set_margin(self.start)
         self.start.set_hexpand(False)
         self.grid.attach(self.start, 3, 10, 1, 1)
@@ -468,7 +477,8 @@ class WereSyncWindow(Gtk.Window):
     def _show_error(self, ex):
         """Displays an error in a message dialog."""
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.ERROR,
-                                   Gtk.ButtonsType.OK, "Error starting clone.")
+                                   Gtk.ButtonsType.OK,
+                                   _("Error starting clone."))
         dialog.format_secondary_text(str(ex))
         dialog.run()
         dialog.destroy()
@@ -481,9 +491,9 @@ class WereSyncWindow(Gtk.Window):
     def _copy_finished(self, result):
         """A callback function to be run when the the drive finishes
         copying."""
-        text = "Clone finished!"
+        text = _("Clone finished!")
         if result is not True:
-            text += "\nNon fatal error occurred: " + str(result)
+            text += _("\nNon fatal error occurred: ") + str(result)
 
         dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.INFO,
                                    Gtk.ButtonsType.OK, text)
@@ -498,7 +508,7 @@ class WereSyncWindow(Gtk.Window):
 
         self.progress_grid = Gtk.Grid()
         part_label = Gtk.Label(
-            label="Checking partitions and copying: ",
+            label=_("Checking partitions and copying: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -517,7 +527,7 @@ class WereSyncWindow(Gtk.Window):
         previous_label = part_label
         for val in partitions:
             copy_label = Gtk.Label(
-                label="Copying partition {0}: ".format(val),
+                label=_("Copying partition {0}: ").format(val),
                 halign=Gtk.Align.START,
                 xpad=DEFAULT_HORIZONTAL_PADDING,
                 ypad=DEFAULT_VERTICAL_PADDING)
@@ -530,7 +540,7 @@ class WereSyncWindow(Gtk.Window):
             self.copy_progresses[val] = copy_progress
             previous_label = copy_label
         boot_label = Gtk.Label(
-            label="Making bootable: ",
+            label=_("Making bootable: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
@@ -568,6 +578,9 @@ class WereSyncWindow(Gtk.Window):
 
 
 def start_gui():
+
+    interface.enable_localization()
+
     try:
         interface.check_python_version()
     except InvalidVersionError as ex:
@@ -576,7 +589,7 @@ def start_gui():
         # PyGObject, but it's worth a shot.
         dialog = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR,
                                    Gtk.ButtonsType.OK,
-                                   "Error starting WereSync.")
+                                   _("Error starting WereSync."))
         dialog.format_secondary_text(str(ex))
         dialog.run()
         dialog.destroy()
@@ -585,7 +598,8 @@ def start_gui():
     # interface.start_logging_handler(LOGGER)
     interface.start_logging_handler()
     # logging.basicConfig(level=logging.INFO)
-    LOGGER.info("Starting gui.")
+
+    LOGGER.info(_("Starting gui."))
     GObject.threads_init()
     win = WereSyncWindow()
     win.connect("delete-event", Gtk.main_quit)

@@ -30,7 +30,7 @@ from distutils.sysconfig import get_python_lib
 import os
 import os.path
 import weresync.device as device
-from weresync.exception import DeviceError, CopyError
+from weresync.exception import DeviceError
 import sys
 import logging
 
