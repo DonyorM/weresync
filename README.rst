@@ -2,7 +2,7 @@
 WereSync
 ########
 
-`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/master/g>`__ | `Contributing <#contributing-and-bug-reports>`__
+`Installation <#installation>`__ | `Basic Usage <#basic-usage>`__ | `Documentation <https://weresync.readthedocs.io/en/master/>`__ | `Contributing <#contributing-and-bug-reports>`__ 
 
 .. image:: https://github.com/DonyorM/weresync/raw/master/docs/source/img/weresync-logo.png
    :align: center 
@@ -29,15 +29,15 @@ There are a few reasons to use WereSync over the other tools.
 - **WereSync is accessible to less-technical users.** It comes with a simple
   interface and clone a drive with a single command while your computer is
   running. No booting to a live disk or pushing through a long initiation
-  process.
-- Unlike `dd` or CloneZilla, WereSync requires a low level of technical skill and an easy learning curve
+  process. Unlike `dd` or CloneZilla, WereSync requires a low level of
+  technical skill and has an easy learning curve
 - WereSync can run while the your main drive is being used, instead of blocking your computer up for hours at a time
 - WereSync will incrementally update clones, making subsequent clones much faster.
 - WereSync works quickly, a single command copies your entire drive, no booting to live CDs or managing MBRs.
 - WereSync can copy to a smaller drive, provided your drive's data will fit.
 - WereSync creates new UUIDs for the new partitions, allowing you to use the old and new drives alongside each other.
 
-Full documentation may be found `here <https://weresync.readthedocs.io/en/master/gindex.html>`__.
+Full documentation may be found `here <https://weresync.readthedocs.io/en/master/>`__.
 
 Installation
 ============
@@ -52,7 +52,7 @@ If you have `pip <https://pypi.python.org/pypi/pip/>`__ installed, you can easil
 
     $ pip install weresync
 
-For more in-depth instructions, see the `installation documentation <https://weresync.readthedocs.io/en/master/ginstallation.html>`__.
+For more in-depth instructions, see the `installation documentation <https://weresync.readthedocs.io/en/master/installation.html>`__.
 
 Basic Usage
 ===========
@@ -78,13 +78,13 @@ To copy from /dev/sda to /dev/sdb (the two drives must have the same partition s
     $ sudo weresync /dev/sda /dev/sdb
 
 For more information, including how to copy the partition table from drive to
-another, see the `Basic Usage <https://weresync.readthedocs.io/en/master/gweresync.html>`__
+another, see the `Basic Usage <https://weresync.readthedocs.io/en/master/weresync.html>`__
 documentation page.
 
 Documentation
 =============
 
-Documentation can be found on the `Read the Docs <https://weresync.readthedocs.io/en/master/g>`__.
+Documentation can be found on the `Read the Docs <https://weresync.readthedocs.io/en/master/>`__.
 
 Contributing and Bug Reports
 ============================

@@ -1,0 +1,31 @@
+* WereSync Roadmap
+** Version 1.0
+
+WereSync's goal for version 1.0 is the following features:
+
+ - [X] Make drives with LVM bootable
+ - [X] Add builtin plugins for the following bootloaders
+   + [X] Syslinux
+   + +[ ] LILO+ Not possible to support by WereSync
+ - [ ] Check that most UEFI bootloaders are truly supported by the uuid_copy
+       plugin
+   + Grub2 confirmed
+   + Refind confirmed
+ - [X] Support localization (ideally includes translation, but in either case
+   this should support plugin-capabilities)
+ - [ ] Run final tests on a variety of setups, ideally with the help of the
+   community to check for oddities.
+ - [X] Confirm that WereSync continues well after a suspension
+   + Bonus: check if WereSync can continue well after a hibernation
+
+** Version 1.1
+
+ - [ ] Support [[http://zfsonlinux.org/][OpenZFS]].
+
+** Future Features
+
+These features are not planned for a specific version yet, and will be moved
+when their time comes
+
+ - Versioned backups
+
