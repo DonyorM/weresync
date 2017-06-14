@@ -24,7 +24,6 @@ import os
 import logging
 import logging.handlers
 import threading
-import gettext
 gi.require_version("Gtk", '3.0')
 from gi.repository import Gtk, GLib, GObject  # noqa
 
@@ -94,25 +93,31 @@ def generate_drive_list():
         "/dev/" + x.strip() for x in str(output, "utf-8").split("\n")
         if x.strip() != ""
     ]
+    return device_list
+
+
+def generate_vg_list():
     try:
         lvm_proc = subprocess.Popen(
             ["vgs", "-o", "name", "--noheadings"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         lvm_output, _ = lvm_proc.communicate()
+        out = str(lvm_output, "utf-8").split("\n")
         if lvm_proc.returncode != 0:
-            LOGGER.critical("Error reading volume group list.\n" + lvm_output)
-        lvm_list = [
-            "/dev/" + x.strip() for x in str(lvm_output, "utf-8").split("\n")
-            if x.strip() != ""
-        ]
+            LOGGER.critical("Error reading volume group list.\n"
+                            + " ".join(out))
+        if "No volume groups found" in out:
+            lvm_list = ["No volume groups found"]
+        else:
+            lvm_list = ["/dev/" + x.strip() for x in out if x.strip() != ""]
     except FileNotFoundError as ex:
         # Probably means LVM is not installed on the system, which is no big
         # deal. We'll just log the exception and move on
         LOGGER.debug("File not found info: ", exc_info=sys.exc_info())
         lvm_list = []  # This variable needs to be defined
 
-    return device_list + lvm_list
+    return lvm_list
 
 
 def get_resource(resource):
@@ -165,6 +170,46 @@ class WereSyncWindow(Gtk.Window):
                                  Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.target_combo, self.target_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
+        box = Gtk.Box()
+        self.grid.attach_next_to(box, self.source_combo,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.lvm_source_label = Gtk.Label(
+            label=_("Source VG: "),
+            halign=Gtk.Align.START,
+            xpad=DEFAULT_HORIZONTAL_PADDING,
+            ypad=DEFAULT_VERTICAL_PADDING)
+        lvm_list = generate_vg_list()
+        lvm_source_store = Gtk.ListStore(int, str)
+        for idx, val in enumerate(lvm_list):
+            lvm_source_store.append([idx, val])
+        self.lvm_source_combo = Gtk.ComboBox.new_with_model_and_entry(
+            lvm_source_store)
+        self.lvm_source_combo.set_hexpand(True)
+        self.lvm_source_combo.set_entry_text_column(1)
+        self.lvm_source_combo.set_sensitive(False)
+        self.grid.attach_next_to(self.lvm_source_label, box,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.grid.attach_next_to(self.lvm_source_combo, self.lvm_source_label,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.lvm_target_label = Gtk.Label(
+            label=_("Target VG: "),
+            halign=Gtk.Align.START,
+            xpad=DEFAULT_HORIZONTAL_PADDING,
+            ypad=DEFAULT_VERTICAL_PADDING)
+        lvm_target_store = Gtk.ListStore(int, str)
+        lvm_target_store.append([1, _("Default")])
+        for idx, val in enumerate(lvm_list):
+            lvm_target_store.append([idx, val])
+        self.lvm_target_combo = Gtk.ComboBox.new_with_model_and_entry(
+            lvm_target_store)
+        self.lvm_target_combo.set_hexpand(True)
+        self.lvm_target_combo.set_entry_text_column(1)
+        self.lvm_target_combo.set_active(0)
+        self.lvm_target_combo.set_sensitive(False)
+        self.grid.attach_next_to(self.lvm_target_label, self.lvm_source_label,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+        self.grid.attach_next_to(self.lvm_target_combo, self.lvm_target_label,
+                                 Gtk.PositionType.RIGHT, 1, 1)
         self.copy_partitions_button = Gtk.CheckButton(
             label=_("Copy partitions if target partitions are invalid."))
         set_margin(self.copy_partitions_button)
@@ -172,8 +217,9 @@ class WereSyncWindow(Gtk.Window):
                                  self.target_label, Gtk.PositionType.BOTTOM, 2,
                                  1)
         self.lvm_button = Gtk.CheckButton(
-            label=_("Source and target are logical volume groups."))
-        self.grid.attach_next_to(self.lvm_button, self.copy_partitions_button,
+            label=_("Copy Logical Volume Groups."))
+        self.lvm_button.connect("toggled", self.lvm_button_toggled)
+        self.grid.attach_next_to(self.lvm_button, self.lvm_target_label,
                                  Gtk.PositionType.BOTTOM, 2, 1)
         set_margin(self.lvm_button)
         self.bootloader_label = Gtk.Label(
@@ -192,41 +238,20 @@ class WereSyncWindow(Gtk.Window):
               "bootloader"
               " you want to install. If you are unsure what to choose, pick"
               " 'UUID Copy'."), _("Bootloader Plugin"))
-        self.grid.attach_next_to(self.bootloader_label, self.lvm_button,
+        self.grid.attach_next_to(self.bootloader_label,
+                                 self.copy_partitions_button,
                                  Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.bootloader_combo, self.bootloader_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.grid.attach_next_to(self.bootloader_help, self.bootloader_combo,
                                  Gtk.PositionType.RIGHT, 1, 1)
-        self.efi_partition_label = Gtk.Label(
-            label=_("EFI Partition Number: "),
-            halign=Gtk.Align.START,
-            xpad=DEFAULT_HORIZONTAL_PADDING,
-            ypad=DEFAULT_VERTICAL_PADDING)
-        self.grid.attach_next_to(self.efi_partition_label,
-                                 self.bootloader_label,
-                                 Gtk.PositionType.BOTTOM, 1, 1)
-        self.efi_partition_entry = NumberEntry()
-        self.efi_partition_entry.set_hexpand(True)
-        self.grid.attach_next_to(self.efi_partition_entry,
-                                 self.efi_partition_label,
-                                 Gtk.PositionType.RIGHT, 1, 1)
-        self.efi_help = create_help_box(
-            self,
-            _("Enter the partition number of your EFI partition.\n"
-              "So if your efi partition is found on /dev/sda1,"
-              " enter 1.\n"
-              "If you are not running a UEFI system, leave this blank."),
-            _("EFI Partition"))
-        self.grid.attach_next_to(self.efi_help, self.efi_partition_entry,
-                                 Gtk.PositionType.RIGHT, 1, 1)
         self.bootloader_partition_label = Gtk.Label(
-            label=_("Bootloader Partition Number: "),
+            label=_("Root Partition Number: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
         self.grid.attach_next_to(self.bootloader_partition_label,
-                                 self.efi_partition_label,
+                                 self.bootloader_label,
                                  Gtk.PositionType.BOTTOM, 1, 1)
         self.bootloader_partition_entry = NumberEntry()
         self.grid.attach_next_to(self.bootloader_partition_entry,
@@ -243,7 +268,47 @@ class WereSyncWindow(Gtk.Window):
                                  self.bootloader_partition_entry,
                                  Gtk.PositionType.RIGHT, 1, 1)
         # Start adding advanced options
+        self.boot_part_label = Gtk.Label(
+            label=_("Boot Partition: "),
+            halign=Gtk.Align.START,
+            xpad=DEFAULT_HORIZONTAL_PADDING,
+            ypad=DEFAULT_VERTICAL_PADDING)
+        self.grid.attach_next_to(self.boot_part_label,
+                                 self.lvm_button,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+        self.boot_part_entry = NumberEntry()
+        self.grid.attach_next_to(self.boot_part_entry,
+                                 self.boot_part_label,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.boot_help = create_help_box(
+            self,
+            _("The number of the partition mounted on /boot."),
+            _("Boot Partition"))
+        self.grid.attach_next_to(self.boot_help, self.boot_part_entry,
+                                 Gtk.PositionType.RIGHT, 1, 1)
         self.expander = Gtk.Expander(label=_("Advanced Options"))
+        self.efi_partition_label = Gtk.Label(
+            label=_("EFI Partition Number: "),
+            halign=Gtk.Align.START,
+            xpad=DEFAULT_HORIZONTAL_PADDING,
+            ypad=DEFAULT_VERTICAL_PADDING)
+        self.grid.attach_next_to(self.efi_partition_label,
+                                 self.boot_part_label,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+        self.efi_partition_entry = NumberEntry()
+        self.efi_partition_entry.set_hexpand(True)
+        self.grid.attach_next_to(self.efi_partition_entry,
+                                 self.efi_partition_label,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.efi_help = create_help_box(
+            self,
+            _("Enter the partition number of your EFI partition.\n"
+              "So if your efi partition is found on /dev/sda1,"
+              " enter 1.\n"
+              "If you are not running a UEFI system, leave this blank."),
+            _("EFI Partition"))
+        self.grid.attach_next_to(self.efi_help, self.efi_partition_entry,
+                                 Gtk.PositionType.RIGHT, 1, 1)
         set_margin(self.expander)
         self.expander.set_resize_toplevel(True)
         self.expand_grid = Gtk.Grid()
@@ -317,31 +382,14 @@ class WereSyncWindow(Gtk.Window):
                                         self.excluded_entry,
                                         Gtk.PositionType.RIGHT, 1, 1)
 
-        self.boot_part_label = Gtk.Label(
-            label=_("Boot Partition: "),
-            halign=Gtk.Align.START,
-            xpad=DEFAULT_HORIZONTAL_PADDING,
-            ypad=DEFAULT_VERTICAL_PADDING)
-        self.expand_grid.attach_next_to(self.boot_part_label,
-                                        self.excluded_label,
-                                        Gtk.PositionType.BOTTOM, 1, 1)
-        self.boot_part_entry = NumberEntry()
-        self.expand_grid.attach_next_to(self.boot_part_entry,
-                                        self.boot_part_label,
-                                        Gtk.PositionType.RIGHT, 1, 1)
-        self.boot_help = create_help_box(
-            self,
-            _("The number of the partition mounted on /boot."),
-            _("Boot Partition"))
-        self.expand_grid.attach_next_to(self.boot_help, self.boot_part_entry,
-                                        Gtk.PositionType.RIGHT, 1, 1)
         self.rsync_label = Gtk.Label(
             label=_("Rsync Arguments: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
-        self.expand_grid.attach_next_to(self.rsync_label, self.boot_part_label,
-                                        Gtk.PositionType.BOTTOM, 1, 1)
+        self.expand_grid.attach_next_to(self.rsync_label,
+                                        self.part_mask_help,
+                                        Gtk.PositionType.RIGHT, 1, 1)
         self.rsync_entry = Gtk.Entry(text=device.DEFAULT_RSYNC_ARGS)
         self.expand_grid.attach_next_to(self.rsync_entry, self.rsync_label,
                                         Gtk.PositionType.RIGHT, 1, 1)
@@ -391,12 +439,20 @@ class WereSyncWindow(Gtk.Window):
         # End advanced options
         self.grid.attach_next_to(self.expander,
                                  self.bootloader_partition_label,
-                                 Gtk.PositionType.BOTTOM, 3, 1)
+                                 Gtk.PositionType.BOTTOM, 6, 1)
         self.start = Gtk.Button(label=_("Start Clone"))
         set_margin(self.start)
         self.start.set_hexpand(False)
-        self.grid.attach(self.start, 3, 10, 1, 1)
+        self.grid.attach(self.start, 6, 10, 1, 1)
         self.start.connect("clicked", self.start_pressed)
+
+    def lvm_button_toggled(self, button):
+        if self.lvm_button.get_active():
+            self.lvm_source_combo.set_sensitive(True)
+            self.lvm_target_combo.set_sensitive(True)
+        else:
+            self.lvm_source_combo.set_sensitive(False)
+            self.lvm_target_combo.set_sensitive(False)
 
     def set_expander(self, val):
         self.expander.set_expanded(val)
@@ -433,11 +489,14 @@ class WereSyncWindow(Gtk.Window):
         rsync_args = self.rsync_entry.get_text()
         mount_points = (self.source_mount_entry.get_filename(),
                         self.target_mount_entry.get_filename())
-        lvm = self.lvm_button.get_active()
+        if self.lvm_button.get_active():
+            self.lvm_source = self.get_selected_combo(self.lvm_source_combo)
+            lvm_target = self.get_selected_combo(self.lvm_target_combo)
+            if lvm_target == _("Default"):
+                lvm_target = None
         boot_iter = self.bootloader_combo.get_active_iter()
         model = self.bootloader_combo.get_model()
         plugin_name = model[boot_iter][2]
-        LOGGER.debug("LVM: " + str(lvm))
         try:
             self._generate_progress_grid()
             self.remove(self.grid)
@@ -449,7 +508,8 @@ class WereSyncWindow(Gtk.Window):
                         self.source, self.target, copy_if_invalid,
                         self.source_part_mask, self.target_part_mask,
                         excluded_parts, ignore_errors, bootloader_part,
-                        boot_part, efi_part, mount_points, rsync_args, lvm,
+                        boot_part, efi_part, mount_points, rsync_args,
+                        self.lvm_source, lvm_target,
                         plugin_name,
                         lambda x: GLib.idle_add(self.part_callback, x),
                         lambda num, prog: GLib.idle_add(self.copy_callback,
@@ -517,34 +577,42 @@ class WereSyncWindow(Gtk.Window):
         set_margin(self.part_progress)
         self.progress_grid.attach_next_to(self.part_progress, part_label,
                                           Gtk.PositionType.RIGHT, 1, 1)
-        if self.lvm_button.get_active():
-            manager_type = device.LVMDeviceManager
-        else:
-            manager_type = device.DeviceManager
-        source_manager = manager_type(self.source, self.source_part_mask)
         self.copy_progresses = {}
-        partitions = source_manager.get_partitions()
-        previous_label = part_label
-        for val in partitions:
-            copy_label = Gtk.Label(
-                label=_("Copying partition {0}: ").format(val),
-                halign=Gtk.Align.START,
-                xpad=DEFAULT_HORIZONTAL_PADDING,
-                ypad=DEFAULT_VERTICAL_PADDING)
-            copy_progress = Gtk.ProgressBar()
-            set_margin(copy_progress)
-            self.progress_grid.attach_next_to(copy_label, previous_label,
-                                              Gtk.PositionType.BOTTOM, 1, 1)
-            self.progress_grid.attach_next_to(copy_progress, copy_label,
-                                              Gtk.PositionType.RIGHT, 1, 1)
-            self.copy_progresses[val] = copy_progress
-            previous_label = copy_label
+
+        def create_partitions(source_manager, start_label):
+            previous_label = start_label
+            partitions = source_manager.get_partitions()
+            for val in partitions:
+                copy_label = Gtk.Label(
+                    label=_("Copying partition {0}: ").format(val),
+                    halign=Gtk.Align.START,
+                    xpad=DEFAULT_HORIZONTAL_PADDING,
+                    ypad=DEFAULT_VERTICAL_PADDING)
+                copy_progress = Gtk.ProgressBar()
+                set_margin(copy_progress)
+                self.progress_grid.attach_next_to(copy_label, previous_label,
+                                                  Gtk.PositionType.BOTTOM, 1,
+                                                  1)
+                self.progress_grid.attach_next_to(copy_progress, copy_label,
+                                                  Gtk.PositionType.RIGHT, 1, 1)
+                self.copy_progresses[val] = copy_progress
+                previous_label = copy_label
+
+            return previous_label
+
+        final_label = create_partitions(device.DeviceManager(
+            self.source,
+            self.source_part_mask), part_label)
+        if self.lvm_button.get_active():
+            final_label = create_partitions(device.LVMDeviceManager(
+                self.lvm_source), final_label)
+
         boot_label = Gtk.Label(
             label=_("Making bootable: "),
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
-        self.progress_grid.attach_next_to(boot_label, previous_label,
+        self.progress_grid.attach_next_to(boot_label, final_label,
                                           Gtk.PositionType.BOTTOM, 1, 1)
         self.boot_progress = Gtk.ProgressBar()
         set_margin(self.boot_progress)

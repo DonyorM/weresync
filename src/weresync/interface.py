@@ -31,7 +31,7 @@ LOGGER = logging.getLogger(__name__)
 
 DEFAULT_LOG_LOCATION = "/var/log/weresync/weresync.log"
 """The default location for WereSync's log files."""
-LANGUAGES = []
+LANGUAGES = ["en"]
 """Currently translated languages. See `here <translation.html>`_ for more
 information."""
 
@@ -41,7 +41,8 @@ def enable_localization():
     translation."""
     LOGGER.debug("Enabling localization")
     lodir = os.path.dirname(__file__) + "/../resources/locale"
-    es = gettext.translation("weresync", localedir=lodir, languages=LANGUAGES)
+    es = gettext.translation("weresync", localedir=lodir,
+                             languages=LANGUAGES)
     es.install()
 
 
@@ -137,9 +138,12 @@ def create_new_vg_if_not_exists(lvm, name, target):
         utils.run_proc(["vgcreate", name] + lvm_part_block,
                        target.device, "Error creating logical volume group.")
     else:
+        if name.startswith("/dev/"):
+            name = name[5:]
         result = utils.run_proc(["pvs", "-S", "vg_name=" + name,
                                  "--noheadings", "-o", "pv_name"], name,
                                 "Error finding physical volumes for LVM.")
+        LOGGER.debug("PVs in LVM: " + result)
         results = [x.strip() for x in result.split("\n")]
         lvm_part_block = [x for x in lvm_part_block if x not in results]
         if len(lvm_part_block) > 0:
