@@ -18,10 +18,7 @@ In order to save RAM, uuid_copy will not copy files larger than 200 MB.
 This works for many bootloaders."""
 
 from weresync.plugins import IBootPlugin
-from weresync.exception import CopyError, DeviceError
-import os
-import sys
-import os.path
+from weresync.exception import CopyError
 import logging
 import weresync.plugins as plugins
 

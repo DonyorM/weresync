@@ -1,3 +1,27 @@
+# Copyright 2016 Daniel Manila
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Installs the syslinux bootloader. This bootloader plugin requires the
+"root partition" option to be defined.
+
+Setups using syslinux's altmbr setup are currently not supported.
+
+This plugin assumes that the boot folder is in /boot/syslinux. If this is
+not the case a symbolic link should be created before WereSync is run.
+
+This plugin depends on Extlinux being installed.
+
+On UEFI systems this simply runs the UUID Copy plugin."""
 from weresync.plugins import IBootPlugin
 import weresync.plugins as plugins
 from weresync.exception import CopyError, DeviceError
@@ -5,22 +29,12 @@ import subprocess
 
 
 class SyslinuxPlugin(IBootPlugin):
-    """Installs the syslinux bootloader. This bootloader plugin requires the
-    "root partition" option to be defined.
-
-    Setups using syslinux's altmbr setup are currently not supported.
-
-    This plugin assumes that the boot folder is in /boot/syslinux. If this is
-    not the case a symbolic link should be created.
-
-    This plugin depends on Extlinux being installed."""
 
     def __init__(self):
         super().__init__("syslinux", "Syslinux")
 
     def get_help(self):
-        return """Installs the BIOS syslinux installer. For EFI systems,
-        this simply runs the UUID Copy plugin."""
+        return __doc__
 
     def install_bootloader(self, source_mnt, target_mnt, copier,
                            excluded_partitions=[],

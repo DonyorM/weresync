@@ -1,0 +1,372 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR ORGANIZATION
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: WereSync v1.0\n"
+"POT-Creation-Date: 2017-06-13 21:49+EDT\n"
+"PO-Revision-Date: 2017-06-13 21:56-0500\n"
+"Last-Translator: \n"
+"Language-Team: WereSync <dmv@springwater7.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: pygettext.py 1.5\n"
+"X-Generator: Poedit 1.5.4\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: English\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+
+#: weresync/device.py:1594 weresync/interface.py:322
+msgid "Finished copying files."
+msgstr ""
+
+#: weresync/gui.py:70
+msgid "<a href=\"#\">What's this?</a>"
+msgstr ""
+
+#: weresync/gui.py:147
+msgid "Source Drive: "
+msgstr ""
+
+#: weresync/gui.py:161
+msgid "Target Drive: "
+msgstr ""
+
+#: weresync/gui.py:173
+msgid "Source VG"
+msgstr ""
+
+#: weresync/gui.py:190
+msgid "Target VG"
+msgstr ""
+
+#: weresync/gui.py:205
+msgid "Copy partitions if target partitions are invalid."
+msgstr ""
+
+#: weresync/gui.py:211
+msgid "Source and target are logical volume groups."
+msgstr ""
+
+#: weresync/gui.py:216
+msgid "Bootloader Plugin: "
+msgstr ""
+
+#: weresync/gui.py:226
+msgid ""
+"This is the plugin which will attempt to make your clone bootable. Select "
+"the plugin which corresponds to the bootloader you want to install. If you "
+"are unsure what to choose, pick 'UUID Copy'."
+msgstr ""
+
+#: weresync/gui.py:230
+msgid "Bootloader Plugin"
+msgstr ""
+
+#: weresync/gui.py:238
+msgid "EFI Partition Number: "
+msgstr ""
+
+#: weresync/gui.py:252
+msgid ""
+"Enter the partition number of your EFI partition.\n"
+"So if your efi partition is found on /dev/sda1, enter 1.\n"
+"If you are not running a UEFI system, leave this blank."
+msgstr ""
+
+#: weresync/gui.py:256
+msgid "EFI Partition"
+msgstr ""
+
+#: weresync/gui.py:260
+msgid "Bootloader Partition Number: "
+msgstr ""
+
+#: weresync/gui.py:273
+msgid ""
+"Enter the partition number of the partition to install the bootloader on. "
+"This is generally the partition mounted on /\n"
+"So if your root directory is /dev/sda2, enter 2."
+msgstr ""
+
+#: weresync/gui.py:277
+msgid "Bootloader Partition"
+msgstr ""
+
+#: weresync/gui.py:282
+msgid "Advanced Options"
+msgstr ""
+
+#: weresync/gui.py:288
+msgid ""
+"Ignore errors during copying. If off, common errors often stop the clone."
+msgstr ""
+
+#: weresync/gui.py:296
+msgid "Source Partition Mask: "
+msgstr ""
+
+#: weresync/gui.py:311
+msgid ""
+"A string that controls the how partitions are found on the  file system. It "
+"should have two placeholders: {0} for the device name and {1} for the "
+"partition number.\n"
+"So if you have /dev/loop0 and partition 1 is /dev/loop0p1, the part_mask "
+"should be '{0}p{1}'"
+msgstr ""
+
+#: weresync/gui.py:315
+msgid "Partition Mask"
+msgstr ""
+
+#: weresync/gui.py:320
+msgid "Target Partition Mask: "
+msgstr ""
+
+#: weresync/gui.py:334
+msgid "Excluded Partitions: "
+msgstr ""
+
+#: weresync/gui.py:348
+msgid ""
+"A comma separated list of partition numbers that should not be copied or "
+"searched.\n"
+"If partitions partitions are copied, they will still be copied."
+msgstr ""
+
+#: weresync/gui.py:351
+msgid "Excluded Partitions"
+msgstr ""
+
+#: weresync/gui.py:357
+msgid "Boot Partition: "
+msgstr ""
+
+#: weresync/gui.py:370
+msgid "The number of the partition mounted on /boot."
+msgstr ""
+
+#: weresync/gui.py:371
+msgid "Boot Partition"
+msgstr ""
+
+#: weresync/gui.py:375
+msgid "Rsync Arguments: "
+msgstr ""
+
+#: weresync/gui.py:386
+msgid ""
+"Enter the arguments to pass the rsync program. For more information see <a "
+"href=\"https://download.samba.org/pub/rsync/rsync.html# Options%20Summary"
+"\">the rsync website</a>."
+msgstr ""
+
+#: weresync/gui.py:389
+msgid "Rsync Arguments"
+msgstr ""
+
+#: weresync/gui.py:393
+msgid "Source Drive Mount Point: "
+msgstr ""
+
+#: weresync/gui.py:401
+msgid "Source Drive Mount Folder"
+msgstr ""
+
+#: weresync/gui.py:408
+msgid ""
+"These are the folders that the drives to be copied will be mounted in. If "
+"unset, WereSync will generate random folders in the /tmp directory. "
+"Generally this can be unset."
+msgstr ""
+
+#: weresync/gui.py:411
+msgid "Drive Mount Point."
+msgstr ""
+
+#: weresync/gui.py:416
+msgid "Target Drive Mount Point: "
+msgstr ""
+
+#: weresync/gui.py:421
+msgid "Target Drive Mount Folder"
+msgstr ""
+
+#: weresync/gui.py:431
+msgid "Start Clone"
+msgstr ""
+
+#: weresync/gui.py:517
+msgid "Error starting clone."
+msgstr ""
+
+#: weresync/gui.py:530
+msgid "Clone finished!"
+msgstr ""
+
+#: weresync/gui.py:532
+msgid ""
+"\n"
+"Non fatal error occurred: "
+msgstr ""
+
+#: weresync/gui.py:547
+msgid "Checking partitions and copying: "
+msgstr ""
+
+#: weresync/gui.py:566
+msgid "Copying partition {0}: "
+msgstr ""
+
+#: weresync/gui.py:579
+msgid "Making bootable: "
+msgstr ""
+
+#: weresync/gui.py:628
+msgid "Error starting WereSync."
+msgstr ""
+
+#: weresync/gui.py:638
+msgid "Starting gui."
+msgstr ""
+
+#: weresync/interface.py:158
+msgid "Checking partition validity."
+msgstr ""
+
+#: weresync/interface.py:165
+msgid ""
+"Partitions invalid!\n"
+"Copying drive partition table."
+msgstr ""
+
+#: weresync/interface.py:314
+msgid "Beginning to copy files."
+msgstr ""
+
+#: weresync/interface.py:324
+msgid "Making bootable"
+msgstr ""
+
+#: weresync/interface.py:330
+msgid "Error making drive bootable. All files should be fine."
+msgstr ""
+
+#: weresync/interface.py:332
+msgid "All done, enjoy your drive!"
+msgstr ""
+
+#: weresync/interface.py:365
+msgid "Bootloader plugins found: "
+msgstr ""
+
+#: weresync/interface.py:370
+msgid "The drive to copy data from. This drive will not be edited."
+msgstr ""
+
+#: weresync/interface.py:374
+msgid "The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE ERASED."
+msgstr ""
+
+#: weresync/interface.py:381
+msgid ""
+"Check if partitions are valid and re-partition drive to proper partitions if "
+"they are not."
+msgstr ""
+
+#: weresync/interface.py:387
+msgid ""
+"A string of format '{0}{1}' where {0} represents drive identifier and {1} "
+"represents partition number to point to partition block files for the source "
+"drive."
+msgstr ""
+
+#: weresync/interface.py:394
+msgid ""
+"A string of format '{0}{1}' where {0} represents drive identifier and {1} "
+"represents partition number to point to partition block files for the target "
+"drive."
+msgstr ""
+
+#: weresync/interface.py:400
+msgid ""
+"A comment separated list of partitions of the source drive to apply no "
+"actions on.perated list of partitions of the source drive to apply no "
+"actions on."
+msgstr ""
+
+#: weresync/interface.py:408
+msgid ""
+"Causes program to break whenever a partition cannot be copied, including "
+"uncopyable partitions such as swap files. Not recommended."
+msgstr ""
+
+#: weresync/interface.py:416
+msgid "The partition mounted on /."
+msgstr ""
+
+#: weresync/interface.py:421
+msgid "Partition which should be mounted on /boot"
+msgstr ""
+
+#: weresync/interface.py:426
+msgid "Partition which should be mounted on /boot/efi"
+msgstr ""
+
+#: weresync/interface.py:430
+msgid "Folder where partitions from the source drive should be mounted."
+msgstr ""
+
+#: weresync/interface.py:436
+msgid "Folder where partitions from source drive should be mounted."
+msgstr ""
+
+#: weresync/interface.py:442
+msgid "List of arguments passed to rsync. Defaults to: "
+msgstr ""
+
+#: weresync/interface.py:448
+msgid ""
+"Passed to decide what boootloader plugin to use. See below for list of "
+"plugins. Defaults to simply changing the UUIDs of files in /boot."
+msgstr ""
+
+#: weresync/interface.py:455
+msgid "The name of the source logical volume."
+msgstr ""
+
+#: weresync/interface.py:461
+msgid "Prints expanded output."
+msgstr ""
+
+#: weresync/interface.py:468
+msgid "Prints large output. Mainly helpful for developers."
+msgstr ""
+
+#: weresync/interface.py:480
+msgid "More than two lvm options added. Please give either one or two options."
+msgstr ""
+
+#: weresync/plugins/weresync_grub2.py:105
+msgid "Updating Grub"
+msgstr ""
+
+#: weresync/plugins/weresync_grub2.py:120
+msgid "Installing Grub"
+msgstr ""
+
+#: weresync/plugins/weresync_grub2.py:137
+msgid ""
+"Consider running update-grub on your backup. WereSync copies can sometimes "
+"fail to capture all the nuances of a complex system."
+msgstr ""
+
+#: weresync/plugins/weresync_grub2.py:140
+msgid "Cleaning up."
+msgstr ""
+
+#: weresync/plugins/weresync_grub2.py:147
+msgid "Finished!"
+msgstr ""

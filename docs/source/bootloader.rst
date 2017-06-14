@@ -81,3 +81,36 @@ to update the UUIDs of any given string, for example one from a file.
 The function :py:func:`weresync.plugins.translate_uuid` makes use of the
 above two functions to step recursively through the passed folder and update
 the UUIDs of every text file.
+
+LVM
++++
+
+Your bootloader will be expected to support LVM systems as well. One can test
+if Logical Volume Groups are being copied by testing if the ``lvm_source`` field
+of the ``copier`` object is not ``None``::
+
+    if copier.lvm_source is not None:
+        # Handle copying VG
+
+The ``lvm_source`` and ``lvm_target`` fields will be
+:py:class:`~weresync.device.LVMDeviceManager` objects, but can generally be
+treated like ordinary DeviceManager objects.
+
+Builtin Bootloaders
+-------------------
+
+UUID Copy
++++++++++
+
+.. automodule:: weresync.plugins.weresync_uuid_copy
+
+Grub2
++++++
+
+.. automodule:: weresync.plugins.weresync_grub2
+
+Syslinux
+++++++++
+
+.. automodule:: weresync.plugins.weresync_syslinux
+

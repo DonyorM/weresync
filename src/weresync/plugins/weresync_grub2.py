@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""This modules contains the code to install the grub2 bootloader."""
+"""Installs the Grub2 bootloader. This works on both UEFI and MBR systems."""
+
 
 from weresync.plugins import IBootPlugin
 import weresync.plugins as plugins
@@ -32,8 +33,7 @@ class GrubPlugin(IBootPlugin):
         super().__init__("grub2", "Grub2")
 
     def get_help(self):
-        return "Installs the Grub2 bootloader."\
-            "This works on both UEFI and MBR systems."
+        return __doc__
 
     def install_bootloader(self, source_mnt, target_mnt, copier,
                            excluded_partitions=[],

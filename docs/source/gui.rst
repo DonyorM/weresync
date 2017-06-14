@@ -19,19 +19,35 @@ To start the gui run the command::
 .. image:: img/gui-example.png
    :align: left
 
+LVM
+===
+
+WereSync supports cloning logical volume groups as well. Simply check the
+"Copy Logical Volume Groups" option and select your source group from the
+dropdown.
+
+If the target group name is left as "Default" then WereSync will simply use
+the name of the source group with "-copy" appended to it. WereSync will create
+the target volume group if it does not already exist.
+
 Bootloader Installation
 =======================
 
-WereSync will try to install the `Grub2 <https://www.gnu.org/software/grub/manual/grub.html>`_ bootloader on the target drive after the files have been copied. Other bootloaders are currently not supported.
+WereSync will attempt to install a bootloader onto your drive, based on your
+choice in the "Bootloader Plugin" entry. If you are unsure which to pick,
+use the default "UUID Copy" plugin. WereSync cannot properly install all
+bootloaders. You may have to manually adjust some settings after the clone
+finishes.
 
 If you have your /boot directory on another partition, be sure to pass that partition number to the "Boot Partition" field under advanced options.
+
 
 Dependencies
 ============
 
 The WereSync GUI runs using GTK and requires the `PyGObject <http://www.pygtk.org/>`_ bindings to be installed. On Ubuntu these can be installed with::
 
-    $ sudo apt-get install python3-gi
+    $ sudo apt install python3-gi
 
 API Reference
 =============

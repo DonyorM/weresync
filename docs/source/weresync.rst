@@ -39,11 +39,17 @@ partitions, use the ``-C`` flag::
 On subsequent backups, you may not want to include the -C flag, since this can
 sometimes trigger unnecessary repartitioning.
 
-.. NOTE::
-   WereSync also supports copying Logical Volume Management (LVM) drives. Pass the
-   ``--lvm`` flag to the command to activate this feature. As of now, WereSync does
-   not support copying an LVM setup to a normal partition based setup or vice versa
- 
+LVM
++++
+
+WereSync supports the copying of LVM drives with the `-l` flag::
+
+    $ sudo weresync -C -l -B 1 volume-group /dev/sda /dev/sdb
+
+It is highly recommended to pass which partition of the drive your boot
+partition is stored on, if you have a boot partition seperate from the VG.
+If you have your /boot folder inside the VG, your bootloader installation
+mileage may vary.
 
 Bootloader Installation
 -----------------------
@@ -78,9 +84,6 @@ If you have your boot folder on a seperate partition, be sure to let WereSync kn
     $ sudo weresync -E 1 -g 2 -B 3 /dev/sda /dev/sdb
         
 Obviously replace the numbers with the proper values for your system.
-
-.. NOTE::
-   WereSync will not try to make an LVM drive bootable.
 
 Bootloader Plugins
 ++++++++++++++++++
@@ -161,10 +164,10 @@ Usage::
        flag is not recommended because it will halt even if encountering a normal
        issue, like a swap partition.
      - False
-   * - --grub-partition PART_NUM
+   * - --root-partition PART_NUM
      - -g PART_NUM
-     - The partition number that grub should be installed on. It is recommended to
-       pass this always, but it WereSync will attempt to find the main partition
+     - The partition mounted on /. It is recommended to
+       pass this always, but WereSync will attempt to find the main partition
        even if it is not passed.
      - None, WereSync searches for the partition.
    * - --boot-partition PART_NUM
@@ -192,10 +195,12 @@ Usage::
      - -r RSYNC_ARGS
      - The arguments to be passed to the rsync instance used to copy files.
      - -aAXxvH --delete
-   * - --lvm
+   * - --lvm SOURCE [TARGET]
      - -l
-     - If passed, both the target and the source drive will be treated as
-       logical volume groups.
+     - This argument expects either one or two arguments specifying the
+       logical volume groups to copy from and to, respectively. If no target
+       VG is passed, WereSync will use the VG SOURCE-copy. If the target does
+       not exist, WereSync will create it.
      - Both the target and source are treated as block devices
    * - --bootloader BOOTLOADER
      - -L BOOTLOADER
