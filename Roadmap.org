@@ -11,11 +11,11 @@ WereSync's goal for version 1.0 is the following features:
        plugin
    + Grub2 confirmed
    + Refind confirmed
- - [ ] Support localization (ideally includes translation, but in either case
+ - [X] Support localization (ideally includes translation, but in either case
    this should support plugin-capabilities)
  - [ ] Run final tests on a variety of setups, ideally with the help of the
    community to check for oddities.
- - [ ] Confirm that WereSync continues well after a suspension
+ - [X] Confirm that WereSync continues well after a suspension
    + Bonus: check if WereSync can continue well after a hibernation
 
 ** Version 1.1
