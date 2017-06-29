@@ -25,7 +25,7 @@ setup(
     },
     include_package_data=True,
     package_data={
-        "resources": ["*.svg", "*.png"]
+        "resources": ["*.svg", "*.png", "locale/*/LC_MESSAGES/*"]
     },
     # Metadata
     author="Daniel Manila",
