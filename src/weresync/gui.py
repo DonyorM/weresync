@@ -133,13 +133,20 @@ class WereSyncWindow(Gtk.Window):
         manager = plugins.get_manager()
         manager.collectPlugins()
         plugin_store = Gtk.ListStore(int, str, str)
+        plugins_added = []
         uuid_index = 0
         for idx, pluginInfo in enumerate(manager.getAllPlugins()):
             manager.activatePluginByName(pluginInfo.name)
             obj = pluginInfo.plugin_object
-            plugin_store.append([idx, obj.prettyName, obj.name])
-            if obj.name == "uuid_copy":
-                uuid_index = idx
+            if pluginInfo.name not in plugins_added:
+                plugin_store.append([idx, obj.prettyName, obj.name])
+                plugins_added.append(pluginInfo.name)
+                if obj.name == "uuid_copy":
+                    uuid_index = idx
+            else:
+                LOGGER.debug("Not adding {name} at {path} because plugin"
+                             "already added".format(name=pluginInfo.name,
+                                                    path=pluginInfo.path))
 
         self.set_icon_from_file(get_resource("weresync.svg"))
         self.grid = Gtk.Grid()
@@ -470,6 +477,34 @@ class WereSyncWindow(Gtk.Window):
     def start_pressed(self, *args):
         self.source = self.get_selected_combo(self.source_combo)
         self.target = self.get_selected_combo(self.target_combo)
+        is_lvm = self.lvm_button.get_active()
+        if is_lvm:
+            self.lvm_source = self.get_selected_combo(self.lvm_source_combo)
+            lvm_target = self.get_selected_combo(self.lvm_target_combo)
+            if lvm_target == _("Default"):
+                lvm_target = None
+        else:
+            self.lvm_source = None
+            lvm_target = None
+        confirm_dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
+                                           Gtk.ButtonsType.OK_CANCEL,
+                                           "")
+        confirm_dialog.format_secondary_text(("This action will DELETE "
+                                              "everything on {drive} " + (
+                                                  " and {lvm}" if is_lvm
+                                                  else "")
+                                              + ", and make it the "
+                                              "same as the source drives. Is "
+                                              "this what you want to do?").
+                                             format(
+                                                 drive=self.target,
+                                                 lvm=(lvm_target if is_lvm
+                                                      else "")))
+        response = confirm_dialog.run()
+        confirm_dialog.destroy()
+        if response == Gtk.ResponseType.CANCEL:
+            return
+        # The user didn't cancel so we can continue running
         copy_if_invalid = self.copy_partitions_button.get_active()
         efi_part = int(self.efi_partition_entry.get_text(
         )) if self.efi_partition_entry.get_text().strip() != "" else None
@@ -489,11 +524,6 @@ class WereSyncWindow(Gtk.Window):
         rsync_args = self.rsync_entry.get_text()
         mount_points = (self.source_mount_entry.get_filename(),
                         self.target_mount_entry.get_filename())
-        if self.lvm_button.get_active():
-            self.lvm_source = self.get_selected_combo(self.lvm_source_combo)
-            lvm_target = self.get_selected_combo(self.lvm_target_combo)
-            if lvm_target == _("Default"):
-                lvm_target = None
         boot_iter = self.bootloader_combo.get_active_iter()
         model = self.bootloader_combo.get_model()
         plugin_name = model[boot_iter][2]

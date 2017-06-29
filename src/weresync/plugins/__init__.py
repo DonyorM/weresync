@@ -137,14 +137,13 @@ def search_for_boot_part(target_mnt, target_manager,
             finally:
                     try:
                         if mounted_here:
-                                self.target.unmount_partition(i)
+                                target_manager.unmount_partition(i)
                     except DeviceError as ex:
                             LOGGER.warning("Error unmounting partition " + i)
                             LOGGER.debug("Error info:\n",
                                          exc_info=sys.exc_info())
         else:  # No partition found
             return None
-
 
 
 class IBootPlugin(IPlugin):
@@ -217,12 +216,8 @@ class IBootPlugin(IPlugin):
         return "Installs the {0} bootloader.".format(self.prettyName)
 
 
-
-
-
-dirs = [
-    "/usr/local/weresync/plugins", get_python_lib(), os.path.dirname(__file__)
-]
+dirs = ["/usr/local/weresync/plugins", os.path.dirname(__file__),
+        get_python_lib()]
 
 regex_analyzer = PluginFileAnalyzerMathingRegex("regex", "^weresync_.*\.py$")
 locator = PluginFileLocator([regex_analyzer])
