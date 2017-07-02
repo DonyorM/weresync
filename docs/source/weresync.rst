@@ -44,6 +44,7 @@ LVM
 
 WereSync supports the copying of LVM drives with the `-l` flag::
 
+
     $ sudo weresync -C -l -B 1 volume-group /dev/sda /dev/sdb
 
 It is highly recommended to pass which partition of the drive your boot
@@ -119,7 +120,7 @@ In-Depth Parameter Definitions
 Usage::
 
      weresync [-h] [-C] [-s SOURCE_MASK] [-t TARGET_MASK]
-                [-e EXCLUDED_PARTITIONS] [-b] [-g GRUB_PARTITION]
+                [-e EXCLUDED_PARTITIONS] [-b] [-g ROOT_PARTITION]
                 [-B BOOT_PARTITION] [-E EFI_PARTITION] [-m SOURCE_MOUNT]
                 [-M TARGET_MOUNT] [-r RSYNC_ARGS] [-l] [-L BOOTLOADER]
                 [-v] [-d] source target
@@ -178,7 +179,8 @@ Usage::
    * - --efi-partition PART_NUM
      - -E PART_NUM
      - The partition that should be mounted on /boot/efi of the grub_partition. If
-       passed this will create the /boot/efi folder if it does not exist and pass
+       
+passed this will create the /boot/efi folder if it does not exist and pass
        it to grub. Required if you have an EFI partition.
      - None
    * - --source-mount DIR
@@ -201,7 +203,7 @@ Usage::
        logical volume groups to copy from and to, respectively. If no target
        VG is passed, WereSync will use the VG SOURCE-copy. If the target does
        not exist, WereSync will create it.
-     - Both the target and source are treated as block devices
+     - No Volume Groups are copied 
    * - --bootloader BOOTLOADER
      - -L BOOTLOADER
      - The plugin to use to install the bootloader. Such plugins can be found

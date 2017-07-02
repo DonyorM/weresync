@@ -9,8 +9,8 @@ clone linux drives incrementally
 --------------------------------
 
 :Author: Daniel Manila <dmv@springwater7.org>
-:Date: December 30, 2016
-:Version: 0.2
+:Date: June 30th, 2017
+:Version: 1.0
 :Manual Section: 1
 :Manual group: admin
 
@@ -19,9 +19,12 @@ weresync-gui - GUI interface for the weresync program.
 SYNOPSIS
 --------
 
-weresync [**-h**] [**-C**] [**-s** *SOURCE_MASK*] [**-t** *TARGET_MASK*] [**-e** *EXCLUDED_PARTITIONS*] [**-b**] [**-g** *GRUB_PARTITION*] [**-B** *BOOT_PARTITION*] [**-E** *EFI_PARTITION*] [**-m** *SOURCE_MOUNT*] [**-M** *TARGET_MOUNT*] [**-r** *RSYNC_ARGS*] [**-v** | **-d**] source target
+weresync [ options ] [**-g** *ROOT_PARTITION*] [**-B** *BOOT_PARTITION*]
+         [**-E** *EFI_PARTITION*] [**-L** *BOOTLOADER*]
+         [**-l** *LVM_SOURCE* [*LVM_TARGET*]]
+         source target
 
-weresync-gui
+**weresync-gui**
 
 DESCRIPTION
 -----------
@@ -51,8 +54,8 @@ The *weresync-gui* command takes no arguments. These arguments apply to the *wer
 -b, --break-on-error
     If passed the program will halt if there are any errors copying. This flag is not recommended because it will halt even if encountering a normal issue, like a swap partition.
 
--g, --grub-partition *PART_NUM*
-    The partition number that grub should be installed on. It is recommended to pass this always, but it WereSync will attempt to find the main partition even if it is not passed.
+-g, --root-partition *PART_NUM*
+    The partition mounted on /. It is recommended to pass this always, but WereSync will attempt to find the main partition even if it is not passed.
 
 -B, --boot-partition *PART_NUM*
     The partition that should be mounted on /boot of the grub_partition. If you have a separate boot partition, you must use this flag.
@@ -68,6 +71,14 @@ The *weresync-gui* command takes no arguments. These arguments apply to the *wer
 
 -r, --rsync-args *RSYNC_ARGS*
     The arguments to be passed to the rsync instance used to copy files. Defaults to "-aAXxH --delete"
+
+-l, --lvm *SOURCE* [*TARGET*]
+    This argument expects either one or two arguments specifying the logical volume groups to copy from and to, respectively. If no target VG is passed, WereSync will use the VG SOURCE-copy. If the target does not exist, WereSync will create it.
+
+-L, --bootloader *BOOTLOADER*
+    The plugin to use to install the bootloader. Such plugins can be found
+    at the bottom of the help message. Defaults to using the "uuid_copy"
+    plugin.
 
 -v, --verbose
     Makes WereSync increase output and include more minor details.
@@ -98,4 +109,5 @@ limitations under the License.
 SEE ALSO
 --------
 
-Full documentation can be found at WereSync's documentation on Python Hosted: `<https://pythonhosted.org/WereSync/>`_
+Full documentation can be found at WereSync's documentation on Read The Docs:
+`<https://weresync.readthedocs.io/en/master/>`_

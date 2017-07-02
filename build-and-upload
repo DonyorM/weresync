@@ -3,5 +3,5 @@
 cd $(dirname $0)
 trash dist-old
 mv dist dist-old
-python setup.py bdist bdist_egg bdist_wheel
+python setup.py bdist_egg bdist_wheel sdist
 twine upload -s -i "dmv@springwater7.org" dist/*
