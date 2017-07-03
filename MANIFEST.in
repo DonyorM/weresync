@@ -10,3 +10,4 @@ recursive-include docs *.py
 recursive-include docs *.inc
 recursive-include src *.svg
 recursive-include src *.png
+recursive-include src *.mo

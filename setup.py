@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name="WereSync",
-    version="1.0.1",
+    version="1.0.2",
     package_dir={"": "src"},
     packages=find_packages("src"),
     install_requires=["parse>=1.6.6", "yapsy>=1.11.223"],
