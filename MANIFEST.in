@@ -8,6 +8,8 @@ recursive-include tests *.py
 recursive-include docs *.rst
 recursive-include docs *.py
 recursive-include docs *.inc
+recursive-include docs/source *.html
+recursive-include docs/source *.png
 recursive-include src *.svg
 recursive-include src *.png
 recursive-include src *.mo

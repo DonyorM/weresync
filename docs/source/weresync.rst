@@ -178,9 +178,7 @@ Usage::
      - None, no partition mounted.
    * - --efi-partition PART_NUM
      - -E PART_NUM
-     - The partition that should be mounted on /boot/efi of the grub_partition. If
-       
-passed this will create the /boot/efi folder if it does not exist and pass
+     - The partition that should be mounted on /boot/efi of the grub_partition.       If passed this will create the /boot/efi folder if it does not exist and pass
        it to grub. Required if you have an EFI partition.
      - None
    * - --source-mount DIR

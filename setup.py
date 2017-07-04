@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name="WereSync",
-    version="1.0.2",
+    version="1.0.4",
     package_dir={"": "src"},
     packages=find_packages("src"),
     install_requires=["parse>=1.6.6", "yapsy>=1.11.223"],
@@ -27,6 +27,9 @@ setup(
     package_data={
         "resources": ["*.svg", "*.png", "locale/*/LC_MESSAGES/*"]
     },
+    data_files=[
+        ("share/icons/hicolor/apps", ["src/weresync/resources/weresync.svg"])
+    ],
     # Metadata
     author="Daniel Manila",
     author_email="dmv@springwater7.org",
