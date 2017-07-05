@@ -122,7 +122,7 @@ def generate_vg_list():
 
 def get_resource(resource):
     dir = os.path.dirname(__file__)
-    rel_resource_path = os.path.join(dir, "..", "resources", resource)
+    rel_resource_path = os.path.join(dir, "resources", resource)
     return os.path.abspath(rel_resource_path)
 
 

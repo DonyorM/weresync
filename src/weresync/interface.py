@@ -40,7 +40,7 @@ def enable_localization():
     """Activates the `gettext` module to start internalization and enable
     translation."""
     LOGGER.debug("Enabling localization")
-    lodir = os.path.dirname(__file__) + "/../resources/locale"
+    lodir = sys.prefix + "/share/locale"
     es = gettext.translation("weresync", localedir=lodir,
                              languages=LANGUAGES)
     es.install()
