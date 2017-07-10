@@ -13,6 +13,7 @@ WereSync requires different programs for different systems. Generally these prog
 - `parted <https://www.gnu.org/software/parted/>`_; required for all systems
 - fdisk; required for working with msdos/MBR partitioned drives
 - `GPT fdisk <http://www.rodsbooks.com/gdisk/>`_; required for working with GPT partitioned drives
+- `gettext <https://www.gnu.org/software/gettext/>`_; required for all systems
 
 Bootloaders
 -----------

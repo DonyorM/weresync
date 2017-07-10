@@ -3,10 +3,22 @@
 import os
 from setuptools import setup, find_packages
 import subprocess
-import sys
+import shutil
+
+
+class InvalidSetupError(Exception):
+    pass
 
 
 def create_mo_files():
+    # Avoids this code running on read the docs, since gettext is not installed
+    # there
+    if os.environ.get("READTHEDOCS") == "True":
+        return []
+    if shutil.which("msgfmt") is None:
+        # If gettext isn't installed, skip this
+        raise InvalidSetupError("gettext not installed but is required.")
+
     data_files = []
     localedir = 'locale'
     po_dirs = [localedir + '/' + l + '/LC_MESSAGES/'
@@ -22,7 +34,7 @@ def create_mo_files():
             msgfmt_cmd = 'msgfmt {} -o {}'.format(d + po_file, d + mo_file)
             subprocess.call(msgfmt_cmd, shell=True)
             mo_files.append(d + mo_file)
-        data_files.append((sys.prefix + "/share/" + d, mo_files))
+        data_files.append(("share/" + d, mo_files))
     return data_files
 
 
@@ -33,7 +45,7 @@ def read(fname):
 
 setup(
     name="WereSync",
-    version="1.0.5",
+    version="1.0.6",
     package_dir={"": "src"},
     packages=find_packages("src"),
     install_requires=["parse>=1.6.6", "yapsy>=1.11.223"],
@@ -50,7 +62,7 @@ setup(
         "resources": ["*.svg", "*.png"]
     },
     data_files=[
-        (sys.prefix + "/share/icons/hicolor/scalable/apps",
+        ("share/icons/hicolor/scalable/apps",
          ["src/weresync/resources/weresync.svg"])
     ] + create_mo_files(),
     # Metadata
