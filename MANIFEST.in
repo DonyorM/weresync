@@ -12,5 +12,5 @@ recursive-include docs/source *.html
 recursive-include docs/source *.png
 recursive-include src *.svg
 recursive-include src *.png
-recursive-include locale *.po
-include locale/weresync.pot
+recursive-include src *.po
+include src/weresync/resources/locale/weresync.pot

@@ -18,6 +18,7 @@ import weresync.device as device
 from weresync.exception import (CopyError, DeviceError, InvalidVersionError,
                                 UnsupportedDeviceError)
 import weresync.utils as utils
+import weresync
 import logging
 import logging.handlers
 import random
@@ -40,7 +41,7 @@ def enable_localization():
     """Activates the `gettext` module to start internalization and enable
     translation."""
     LOGGER.debug("Enabling localization")
-    lodir = sys.prefix + "/share/locale"
+    lodir = os.path.dirname(os.path.realpath(__file__)) + "/resources/locale"
     es = gettext.translation("weresync", localedir=lodir,
                              languages=LANGUAGES)
     es.install()
