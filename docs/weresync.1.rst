@@ -105,6 +105,36 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
+EXAMPLES
+--------
+
+To copy /dev/sda to /dev/sdb on a UEFI system use::
+
+    sudo weresync -C -L grub2 -E 1 -g 2 /dev/sda /dev/sdb
+
+This example uses grub2 as the bootloader (for most other UEFI bootloaders use
+``-L uuid_copy`` or omit the ``-L`` option all together)
+with the efi partition on /dev/sda1, and the root partition on /dev/sda2.
+
+Subsequent copies should omit the ``-C`` option, since it could cause weresync
+to repartition /dev/sdb again, thus deleting existing data and making weresync's
+incremental abilities useless.
+
+To copy /dev/sda to /dev/sdb on a BIOS/Legacy system use::
+
+    sudo weresync -C -L grub2 -g 1 /dev/sda /dev/sdb
+
+This example uses grub2 as the bootloader (other bootloaders, such as syslinux,
+may be passed to the ``-L`` option) and has the root partition on /dev/sda1.
+The omittance of the ``-E`` option signals to WereSync that this is not a
+a UEFI drive.
+
+As above, subsequent copies should be initiated without the ``-C`` option.
+
+The gui can simply be run with::
+
+    sudo weresync-gui
+
 
 SEE ALSO
 --------
