@@ -1406,7 +1406,7 @@ class DeviceCopier:
                                     output, error = proc.communicate()
                                     if proc.returncode == 2:
                                         raise weresync.exception.DeviceError(
-                                            self.soruce.device,
+                                            self.source.device,
                                             "Could not find block name of "
                                             "device with id: {0}".format(
                                                 identifier),
