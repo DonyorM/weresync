@@ -50,7 +50,7 @@ if os.getuid() == 0:  # Install is running as root
 if __name__ == "__main__":
     setup(
         name="WereSync",
-        version="1.0.7",
+        version="1.0.8",
         package_dir={"": "src"},
         packages=find_packages("src"),
         install_requires=["parse>=1.6.6", "yapsy>=1.11.223"],
