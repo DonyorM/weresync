@@ -145,22 +145,10 @@ def test_unmount_partition_non_zero(monkeypatch):
 
 
 def test_get_partition_table_type_gpt(monkeypatch):
-    generateStandardMock(monkeypatch, b"""Model:  (file)
-Disk /media/Data/Documents/Programming/testing-super/gpt.img: 524MB
-Sector size (logical/physical): 512B/512B
-Partition Table: gpt
-
-Number  Start   End     Size    File system  Name   Flags
- 1      17.4kB  50.0MB  50.0MB               test
- 2      50.3MB  74.4MB  24.1MB               cool
- 3      74.4MB  200MB   126MB                nice
- 4      200MB   350MB   150MB                great
- 5      350MB   500MB   150MB                sweet
-    6      500MB   524MB   24.1MB""", b"", 0, None)
+    generateStandardMock(monkeypatch, b"""/dev/sda: gpt partitions 1 2 3 4 5 11 8 9 10 6 7""", b"", 0, None)
     manager = device.DeviceManager("/dev/sda")
     result = manager.get_partition_table_type()
     assert "gpt" == result
-
 
 def test_get_partition_table_type_non_zero_return_code(monkeypatch):
     generateStandardMock(monkeypatch, b"", b"Error.", 1, None)
@@ -170,44 +158,20 @@ def test_get_partition_table_type_non_zero_return_code(monkeypatch):
 
     assert "Error." in str(execinfo.value)
 
-
 def test_get_partition_table_type_mbr(monkeypatch):
-    generateStandardMock(monkeypatch, b"""Model:  (file)
-Disk /media/Data/Documents/Programming/testing-super/mbr.img: 524MB
-Sector size (logical/physical): 512B/512B
-Partition Table: msdos
-
-Number  Start   End    Size    Type     File system  Flags
- 1      1049kB  211MB  210MB   primary
- 2      211MB   368MB  157MB   primary
- 3      368MB   419MB  51.4MB  primary
- 4      419MB   524MB  105MB   primary
-
-    """, b"", 0, None)
+    generateStandardMock(monkeypatch, b"""/dev/sda: msdos partitions 1 2 3 4 5 11 8 9 10 6 7""", b"", 0, None)
     manager = device.DeviceManager("mbr.img")
     result = manager.get_partition_table_type()
 
     assert result == "msdos"
 
-
 def test_get_partition_table_type_unsupported(monkeypatch):
-    generateStandardMock(monkeypatch, b"""Model:  (file)
-Disk /media/Data/Documents/Programming/testing-super/mbr.img: 524MB
-Sector size (logical/physical): 512B/512B
-Partition Table: blah
-
-Number  Start   End    Size    Type     File system  Flags
- 1      1049kB  211MB  210MB   primary
- 2      211MB   368MB  157MB   primary
- 3      368MB   419MB  51.4MB  primary
- 4      419MB   524MB  105MB   primary
-
-    """, b"", 0, None)
-    manager = device.DeviceManager("blah.img")
+    generateStandardMock(monkeypatch, b""" dddd   """, b"", 0, None)
+    manager = device.DeviceManager("/dev/sda")
     with pytest.raises(UnsupportedDeviceError) as execinfo:
         manager.get_partition_table_type()
 
-    assert "blah" in str(execinfo)
+    assert "Partition table type of /dev/sda not supported" in str(execinfo)
 
 
 def test_get_drive_size(monkeypatch):

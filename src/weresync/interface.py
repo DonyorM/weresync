@@ -42,8 +42,7 @@ def enable_localization():
     translation."""
     LOGGER.debug("Enabling localization")
     lodir = os.path.dirname(os.path.realpath(__file__)) + "/resources/locale"
-    es = gettext.translation("weresync", localedir=lodir,
-                             languages=LANGUAGES)
+    es = gettext.translation("weresync", localedir=lodir, languages=LANGUAGES)
     es.install()
 
 
@@ -58,8 +57,7 @@ def check_python_version():
             "Python version {major}.{minor} not supported. WereSync requires "
             "at least Python 3.0\n"
             "Considering installing WereSync with the pip3 command to insure "
-            "it installs with Python3.".
-            format(
+            "it installs with Python3.".format(
                 major=info[0], minor=info[1]))
 
 
@@ -69,16 +67,20 @@ def start_logging_handler(log_loc=DEFAULT_LOG_LOCATION,
     os.makedirs(os.path.dirname(log_loc), exist_ok=True)
     logger = logging.getLogger()
     logger.setLevel(file_level if file_level < stream_level else stream_level)
-    formatter = logging.Formatter("%(name)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(levelname)s - %(asctime)s - %(name)s - %(message)s")
+
+    def enableHandler(hand, level, formatter):
+        hand.setLevel(level)
+        hand.setFormatter(formatter)
+        logger.addHandler(hand)
+
     handler = logging.handlers.TimedRotatingFileHandler(
         log_loc, when="D", interval=1, backupCount=15)
-    handler.setLevel(file_level)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    enableHandler(handler, file_level, formatter)
     streamHandler = logging.StreamHandler()
-    streamHandler.setLevel(stream_level)
-    streamHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
+    enableHandler(streamHandler, stream_level, formatter)
+    logging.getLogger("yapsy").setLevel(logging.INFO)
 
 
 def mount_loop_device(image_file):
@@ -129,21 +131,22 @@ def create_new_vg_if_not_exists(lvm, name, target):
             # the two versions appear in gdisk and fdisk, respectively
             lvm_partitions.append(i)
 
-    lvm_part_block = [target.part_mask.format(target.device, x)
-                      for x in lvm_partitions]
-    lvm_test = subprocess.Popen(["vgs", name], stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
+    lvm_part_block = [
+        target.part_mask.format(target.device, x) for x in lvm_partitions
+    ]
+    lvm_test = subprocess.Popen(
+        ["vgs", name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output, _ = lvm_test.communicate()
     if lvm_test.returncode == 5:
         # If the VG does not exist, the return code is 5
-        utils.run_proc(["vgcreate", name] + lvm_part_block,
-                       target.device, "Error creating logical volume group.")
+        utils.run_proc(["vgcreate", name] + lvm_part_block, target.device,
+                       "Error creating logical volume group.")
     else:
         if name.startswith("/dev/"):
             name = name[5:]
-        result = utils.run_proc(["pvs", "-S", "vg_name=" + name,
-                                 "--noheadings", "-o", "pv_name"], name,
-                                "Error finding physical volumes for LVM.")
+        result = utils.run_proc(
+            ["pvs", "-S", "vg_name=" + name, "--noheadings", "-o",
+             "pv_name"], name, "Error finding physical volumes for LVM.")
         LOGGER.debug("PVs in LVM: " + result)
         results = [x.strip() for x in result.split("\n")]
         lvm_part_block = [x for x in lvm_part_block if x not in results]
@@ -277,8 +280,7 @@ def copy_drive(source,
             LOGGER.warning(
                 "Right now, WereSync does not properly install bootloaders on "
                 "image files. You will have to handle that yourself if you "
-                "want your image to be bootable."
-            )
+                "want your image to be bootable.")
 
         source_manager = device.DeviceManager(source, source_part_mask)
         target_manager = device.DeviceManager(target, target_part_mask)
@@ -298,8 +300,8 @@ def copy_drive(source,
             partitions_remade = True
 
         if lvm_source is not None:
-            create_new_vg_if_not_exists(lvm_source, lvm_source +
-                                        "-copy", target_manager)
+            create_new_vg_if_not_exists(lvm_source, lvm_source + "-copy",
+                                        target_manager)
             lvm_source = device.LVMDeviceManager(lvm_source)
             lvm_target = device.LVMDeviceManager(lvm_source.device + "-copy")
             copier.lvm_source = lvm_source
@@ -366,8 +368,8 @@ def main():
         pluginNames = []
         for pluginInfo in manager.getAllPlugins():
             pluginNames.append(pluginInfo.plugin_object.name)
-        epilog_string = (_("Bootloader plugins found: ")
-                         + ", ".join(pluginNames))
+        epilog_string = (
+            _("Bootloader plugins found: ") + ", ".join(pluginNames))
         parser = argparse.ArgumentParser(epilog=epilog_string)
         parser.add_argument(
             "source",
@@ -376,22 +378,19 @@ def main():
         parser.add_argument(
             "target",
             help=_("The drive to copy data to. ALL DATA ON THIS DRIVE WILL BE "
-                   "ERASED.")
-        )
+                   "ERASED."))
         parser.add_argument(
             "-C",
             "--check-and-partition",
             action="store_true",
             help=_("Check if partitions are valid and re-partition drive to "
-                   "proper partitions if they are not.")
-        )
+                   "proper partitions if they are not."))
         parser.add_argument(
             "-s",
             "--source-mask",
             help=_("A string of format '{0}{1}' where {0} represents drive "
                    "identifier and {1} represents partition number to point "
-                   "to partition block files for the source drive.")
-        )
+                   "to partition block files for the source drive."))
         parser.add_argument(
             "-t",
             "--target-mask",
@@ -403,16 +402,14 @@ def main():
             "--excluded-partitions",
             help=_("A comment separated list of partitions of the source "
                    "drive to apply no actions on.perated list of partitions "
-                   "of the source drive to apply no actions on.")
-        )
+                   "of the source drive to apply no actions on."))
         parser.add_argument(
             "-b",
             "--break-on-error",
             action="store_false",
             help=_("Causes program to break whenever a partition cannot be "
                    "copied, including uncopyable partitions such as swap"
-                   " files. Not recommended.")
-        )
+                   " files. Not recommended."))
         parser.add_argument(
             "-g",
             "--root-partition",
@@ -432,14 +429,12 @@ def main():
             "-m",
             "--source-mount",
             help=_("Folder where partitions from the source drive should be "
-                   "mounted.")
-        )
+                   "mounted."))
         parser.add_argument(
             "-M",
             "--target-mount",
             help=_("Folder where partitions from source drive should be"
-                   " mounted.")
-        )
+                   " mounted."))
         parser.add_argument(
             "-r",
             "--rsync-args",
@@ -481,21 +476,22 @@ def main():
         start_logging_handler(stream_level=loglevel)
         mount_points = (args.source_mount, args.target_mount)
         if args.lvm is not None and len(args.lvm) > 2:
-            LOGGER.warning(_("More than two lvm options added. Please give "
-                           "either one or two options."))
+            LOGGER.warning(
+                _("More than two lvm options added. Please give "
+                  "either one or two options."))
             sys.exit(1)
 
         lvm_source = args.lvm[0] if args.lvm is not None else None
-        lvm_target = args.lvm[1] if (args.lvm is not None
-                                     and len(args.lvm) == 2) else None
+        lvm_target = args.lvm[1] if (args.lvm is not None and
+                                     len(args.lvm) == 2) else None
 
         excluded_partitions = [
             int(x) for x in args.excluded_partitions.split(",")
         ] if args.excluded_partitions is not None else []
-        source_mask = (args.source_mask if args.source_mask is not None else
-                       default_part_mask)
-        target_mask = (args.target_mask if args.target_mask else
-                       default_part_mask)
+        source_mask = (args.source_mask
+                       if args.source_mask is not None else default_part_mask)
+        target_mask = (args.target_mask
+                       if args.target_mask else default_part_mask)
         result = copy_drive(
             args.source,
             args.target,
@@ -511,7 +507,7 @@ def main():
             args.rsync_args,
             lvm_source=lvm_source,
             lvm_target=lvm_target,
-            bootloader=args.bootloader,)
+            bootloader=args.bootloader, )
         if result is not True:
             print(str(result))
 

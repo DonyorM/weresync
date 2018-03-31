@@ -101,7 +101,7 @@ class DeviceManager:
 
         :returns: A list of integers representing the partition numbers"""
         partition_table_proc = subprocess.Popen(
-            ["parted", "-s", self.device, "p"],
+            ["parted", "-s", self.device, "print"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
         output, error = partition_table_proc.communicate()
@@ -239,26 +239,21 @@ class DeviceManager:
                                         supported partition type."""
 
         process = subprocess.Popen(
-            ["parted", "-s", self.device, "print"], stdout=subprocess.PIPE)
+            ["partprobe", "-s", "-d", self.device], stdout=subprocess.PIPE)
         output, error = process.communicate()
         exit_code = process.returncode
         if exit_code != 0:
             raise weresync.exception.DeviceError(self.device,
                                                  "Non-zero exit code",
                                                  str(output, "utf-8"))
-        result = str(output, "utf-8").split("\n")
-        for line in result:
-            line = line.split(":")
-            if line[0] == "Partition Table":
-                table_type = line[1].strip()
-                break
-
-        if table_type not in SUPPORTED_PARTITION_TABLE_TYPES:
-            raise weresync.exception.UnsupportedDeviceError(
-                "Partition table"
-                "type {0} not supported by WereSync.".format(table_type))
+        result = str(output, "utf-8")
+        for table_type in SUPPORTED_PARTITION_TABLE_TYPES:
+            if table_type in result:
+                return table_type
         else:
-            return table_type
+            raise weresync.exception.UnsupportedDeviceError(
+                "Partition table "
+                "type of {0} not supported by WereSync.".format(self.device))
 
     def get_drive_size(self):
         """Returns the maximum size of the drive, in sectors."""
