@@ -671,7 +671,6 @@ class LVMDeviceManager(DeviceManager):
             x.strip().split(":") for x in str(output, "utf-8").split("\n")
             if x.strip() != ""
         ]
-        LOGGER.debug(str(lines))
         return [x[0] for x in lines[1:] if x[1] == self.name]
 
     def get_partition_table_type(self):
@@ -756,9 +755,11 @@ class LVMDeviceManager(DeviceManager):
         self.device = self.device.replace("-", "--")
         old_mask = self.part_mask
         self.part_mask = "/dev/mapper/{0}-{1}"
-        result = super()._get_general_info(partition_num)
-        self.device = old_name
-        self.part_mask = old_mask
+        try:
+            result = super()._get_general_info(partition_num)
+        finally:
+            self.device = old_name
+            self.part_mask = old_mask
         return result
 
     # TODO make this work if needed with LVM drives
@@ -867,6 +868,8 @@ class DeviceCopier:
                 uuids[source_part_uuid] = self.target.get_part_uuid(i)
 
             if self.lvm_source is not None:
+                print("LVM Source is: " + self.lvm_source.device)
+                print("meaningless space")
                 source_vg = parse.parse("/dev/{0}", self.lvm_source.device)[0]
                 target_vg = parse.parse("/dev/{0}", self.lvm_target.device)[0]
                 source_name = source_vg.replace("-", "--")
