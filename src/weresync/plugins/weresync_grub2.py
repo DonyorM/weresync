@@ -16,7 +16,7 @@
 
 from weresync.plugins import IBootPlugin
 import weresync.plugins as plugins
-import weresync.device as device
+import weresync.daemon.device as device
 from weresync.exception import CopyError, DeviceError
 import subprocess
 import os

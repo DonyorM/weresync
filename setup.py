@@ -23,12 +23,11 @@ def create_mo_files():
     localedir = 'src/weresync/resources/locale'
     po_dirs = []
     langs = next(os.walk(localedir))[1]
-    po_dirs = [localedir + '/' + l + '/LC_MESSAGES/'
-               for l in langs]
+    po_dirs = [localedir + '/' + l + '/LC_MESSAGES/' for l in langs]
     for d in po_dirs:
-        po_files = [f
-                    for f in next(os.walk(d))[2]
-                    if os.path.splitext(f)[1] == '.po']
+        po_files = [
+            f for f in next(os.walk(d))[2] if os.path.splitext(f)[1] == '.po'
+        ]
         for po_file in po_files:
             filename, extension = os.path.splitext(po_file)
             mo_file = filename + '.mo'
@@ -46,27 +45,29 @@ target_icon_loc = "share/icons/hicolor/scalable/apps"
 if os.getuid() == 0:  # Install is running as root
     target_icon_loc = "/usr/" + target_icon_loc
 
-
 if __name__ == "__main__":
     setup(
         name="WereSync",
-        version="1.0.9",
+        version="1.1.0",
         package_dir={"": "src"},
         packages=find_packages("src"),
-        install_requires=["parse>=1.6.6", "yapsy>=1.11.223"],
+        install_requires=[
+            "parse==1.6.6", "yapsy==1.11.223", "python-daemon==2.2.0",
+            "pydbus==0.6.0"
+        ],
         entry_points={
             'console_scripts': [
-                "weresync = weresync.interface:main"
+                "weresync = weresync.interface.cmd:main",
+                "weresync-daemon = weresync.daemon.daemon:run"
             ],
-            'gui_scripts': [
-                "weresync-gui = weresync.gui:start_gui"
-            ]
+            'gui_scripts': ["weresync-gui = weresync.interface.gui:start_gui"]
         },
         package_data={
             "weresync.resources": ["*.svg", "*.png"] + create_mo_files()
         },
-        data_files=[(target_icon_loc,
-                     ["src/weresync/resources/weresync.svg"])],
+        data_files=[(target_icon_loc, ["src/weresync/resources/weresync.svg"]),
+                    ("/etc/systemd/system",
+                     ["src/weresync/resources/weresync.service"])],
         # Metadata
         author="Daniel Manila",
         author_email="dmv@springwater7.org",

@@ -13,9 +13,9 @@
 # limitations under the License.
 """This module runs the GUI for WereSync."""
 
-import weresync.device as device
-import weresync.interface as interface
 import weresync.plugins as plugins
+import weresync.utils as utils
+import weresync.daemon.device as device
 from weresync.exception import InvalidVersionError
 import subprocess
 import gi
@@ -26,6 +26,15 @@ import logging.handlers
 import threading
 gi.require_version("Gtk", '3.0')
 from gi.repository import Gtk, GLib, GObject  # noqa
+
+connected = False
+
+try:
+    import weresync.interface.dbus_client as dbus_client
+    connected = True
+except GLib.GError as ex:
+    pass
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -105,8 +114,8 @@ def generate_vg_list():
         lvm_output, _ = lvm_proc.communicate()
         out = str(lvm_output, "utf-8").split("\n")
         if lvm_proc.returncode != 0:
-            LOGGER.critical("Error reading volume group list.\n"
-                            + " ".join(out))
+            LOGGER.critical("Error reading volume group list.\n" +
+                            " ".join(out))
         if "No volume groups found" in out:
             lvm_list = ["No volume groups found"]
         else:
@@ -122,7 +131,7 @@ def generate_vg_list():
 
 def get_resource(resource):
     dir = os.path.dirname(__file__)
-    rel_resource_path = os.path.join(dir, "resources", resource)
+    rel_resource_path = os.path.join(dir, "../resources", resource)
     return os.path.abspath(rel_resource_path)
 
 
@@ -145,8 +154,8 @@ class WereSyncWindow(Gtk.Window):
                     uuid_index = idx
             else:
                 LOGGER.debug("Not adding {name} at {path} because plugin"
-                             "already added".format(name=pluginInfo.name,
-                                                    path=pluginInfo.path))
+                             "already added".format(
+                                 name=pluginInfo.name, path=pluginInfo.path))
 
         self.set_icon_from_file(get_resource("weresync.svg"))
         self.grid = Gtk.Grid()
@@ -280,16 +289,13 @@ class WereSyncWindow(Gtk.Window):
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
-        self.grid.attach_next_to(self.boot_part_label,
-                                 self.lvm_button,
+        self.grid.attach_next_to(self.boot_part_label, self.lvm_button,
                                  Gtk.PositionType.BOTTOM, 1, 1)
         self.boot_part_entry = NumberEntry()
-        self.grid.attach_next_to(self.boot_part_entry,
-                                 self.boot_part_label,
+        self.grid.attach_next_to(self.boot_part_entry, self.boot_part_label,
                                  Gtk.PositionType.RIGHT, 1, 1)
         self.boot_help = create_help_box(
-            self,
-            _("The number of the partition mounted on /boot."),
+            self, _("The number of the partition mounted on /boot."),
             _("Boot Partition"))
         self.grid.attach_next_to(self.boot_help, self.boot_part_entry,
                                  Gtk.PositionType.RIGHT, 1, 1)
@@ -300,8 +306,8 @@ class WereSyncWindow(Gtk.Window):
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
         self.grid.attach_next_to(self.efi_partition_label,
-                                 self.boot_part_label,
-                                 Gtk.PositionType.BOTTOM, 1, 1)
+                                 self.boot_part_label, Gtk.PositionType.BOTTOM,
+                                 1, 1)
         self.efi_partition_entry = NumberEntry()
         self.efi_partition_entry.set_hexpand(True)
         self.grid.attach_next_to(self.efi_partition_entry,
@@ -321,9 +327,10 @@ class WereSyncWindow(Gtk.Window):
         self.expand_grid = Gtk.Grid()
         self.expander.add(self.expand_grid)
         self.expander.set_hexpand(True)
-        self.ignore_errors = Gtk.CheckButton(label=_(
-            "Ignore errors during copying. If off, common errors often "
-            "stop the clone."))
+        self.ignore_errors = Gtk.CheckButton(
+            label=_(
+                "Ignore errors during copying. If off, common errors often "
+                "stop the clone."))
         self.ignore_errors.set_active(True)
         set_margin(self.ignore_errors)
         self.expand_grid.attach(self.ignore_errors, 1, 1, 3, 1)
@@ -394,8 +401,7 @@ class WereSyncWindow(Gtk.Window):
             halign=Gtk.Align.START,
             xpad=DEFAULT_HORIZONTAL_PADDING,
             ypad=DEFAULT_VERTICAL_PADDING)
-        self.expand_grid.attach_next_to(self.rsync_label,
-                                        self.part_mask_help,
+        self.expand_grid.attach_next_to(self.rsync_label, self.part_mask_help,
                                         Gtk.PositionType.RIGHT, 1, 1)
         self.rsync_entry = Gtk.Entry(text=device.DEFAULT_RSYNC_ARGS)
         self.expand_grid.attach_next_to(self.rsync_entry, self.rsync_label,
@@ -418,7 +424,8 @@ class WereSyncWindow(Gtk.Window):
                                         Gtk.PositionType.BOTTOM, 1, 1)
         self.source_mount_entry = Gtk.FileChooserButton(
             title=_("Source Drive Mount Folder"),
-            action=Gtk.FileChooserAction.SELECT_FOLDER, )
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+        )
         self.expand_grid.attach_next_to(self.source_mount_entry,
                                         self.source_mount_label,
                                         Gtk.PositionType.RIGHT, 1, 1)
@@ -482,24 +489,19 @@ class WereSyncWindow(Gtk.Window):
             self.lvm_source = self.get_selected_combo(self.lvm_source_combo)
             lvm_target = self.get_selected_combo(self.lvm_target_combo)
             if lvm_target == _("Default"):
-                lvm_target = None
+                lvm_target = ""
         else:
-            self.lvm_source = None
-            lvm_target = None
+            self.lvm_source = ""
+            lvm_target = ""
         confirm_dialog = Gtk.MessageDialog(self, 0, Gtk.MessageType.QUESTION,
-                                           Gtk.ButtonsType.OK_CANCEL,
-                                           "")
-        confirm_dialog.format_secondary_text(("This action will DELETE "
-                                              "everything on {drive} " + (
-                                                  " and {lvm}" if is_lvm
-                                                  else "")
-                                              + ", and make it the "
-                                              "same as the source drives. Is "
-                                              "this what you want to do?").
-                                             format(
-                                                 drive=self.target,
-                                                 lvm=(lvm_target if is_lvm
-                                                      else "")))
+                                           Gtk.ButtonsType.OK_CANCEL, "")
+        confirm_dialog.format_secondary_text(
+            ("This action will DELETE "
+             "everything on {drive} " + (" and {lvm}" if is_lvm else "") +
+             ", and make it the "
+             "same as the source drives. Is "
+             "this what you want to do?").format(
+                 drive=self.target, lvm=(lvm_target if is_lvm else "")))
         response = confirm_dialog.run()
         confirm_dialog.destroy()
         if response == Gtk.ResponseType.CANCEL:
@@ -507,9 +509,9 @@ class WereSyncWindow(Gtk.Window):
         # The user didn't cancel so we can continue running
         copy_if_invalid = self.copy_partitions_button.get_active()
         efi_part = int(self.efi_partition_entry.get_text(
-        )) if self.efi_partition_entry.get_text().strip() != "" else None
+        )) if self.efi_partition_entry.get_text().strip() != "" else -1
         bootloader_part = int(self.bootloader_partition_entry.get_text(
-        )) if self.bootloader_partition_entry.get_text() != "" else None
+        )) if self.bootloader_partition_entry.get_text() != "" else -1
         ignore_errors = self.ignore_errors.get_active()
         self.source_part_mask = self.source_part_mask_entry.get_text()
         self.target_part_mask = self.target_part_mask_entry.get_text()
@@ -519,11 +521,13 @@ class WereSyncWindow(Gtk.Window):
         else:
             exclude_text.replace(" ", "")
             excluded_parts = [int(x) for x in exclude_text.split(",")]
-        boot_part = int(self.boot_part_entry.get_text(
-        )) if self.boot_part_entry.get_text() != "" else None
+        boot_part = int(self.boot_part_entry.get_text()
+                        ) if self.boot_part_entry.get_text() != "" else -1
         rsync_args = self.rsync_entry.get_text()
-        mount_points = (self.source_mount_entry.get_filename(),
-                        self.target_mount_entry.get_filename())
+        source_mount = self.source_mount_entry.get_filename()
+        target_mount = self.target_mount_entry.get_filename()
+        mount_points = (source_mount if source_mount is not None else "",
+                        target_mount if target_mount is not None else "")
         boot_iter = self.bootloader_combo.get_active_iter()
         model = self.bootloader_combo.get_model()
         plugin_name = model[boot_iter][2]
@@ -532,19 +536,19 @@ class WereSyncWindow(Gtk.Window):
             self.remove(self.grid)
             self.add(self.progress_grid)
 
+            dbus_client.subscribe_to_signals(
+                lambda x: GLib.idle_add(self.part_callback, x),
+                lambda num, prog: GLib.idle_add(self.copy_callback, num, prog),
+                lambda done: GLib.idle_add(self.boot_callback, done))
+
             def copy(callback, error):
                 try:
-                    result = interface.copy_drive(
+                    result = dbus_client.copy_drive(
                         self.source, self.target, copy_if_invalid,
                         self.source_part_mask, self.target_part_mask,
                         excluded_parts, ignore_errors, bootloader_part,
                         boot_part, efi_part, mount_points, rsync_args,
-                        self.lvm_source, lvm_target,
-                        plugin_name,
-                        lambda x: GLib.idle_add(self.part_callback, x),
-                        lambda num, prog: GLib.idle_add(self.copy_callback,
-                                                        num, prog),
-                        lambda done: GLib.idle_add(self.boot_callback, done))
+                        self.lvm_source, lvm_target, plugin_name)
                     callback(result)
                 except Exception as ex:
                     LOGGER.debug(
@@ -609,9 +613,11 @@ class WereSyncWindow(Gtk.Window):
                                           Gtk.PositionType.RIGHT, 1, 1)
         self.copy_progresses = {}
 
-        def create_partitions(source_manager, start_label):
+        def create_partitions(device, device_part_mask, start_label,
+                              lvm=False):
             previous_label = start_label
-            partitions = source_manager.get_partitions()
+            partitions = dbus_client.drive_copier.GetPartitions(
+                device, device_part_mask, lvm)
             for val in partitions:
                 copy_label = Gtk.Label(
                     label=_("Copying partition {0}: ").format(val),
@@ -620,9 +626,8 @@ class WereSyncWindow(Gtk.Window):
                     ypad=DEFAULT_VERTICAL_PADDING)
                 copy_progress = Gtk.ProgressBar()
                 set_margin(copy_progress)
-                self.progress_grid.attach_next_to(copy_label, previous_label,
-                                                  Gtk.PositionType.BOTTOM, 1,
-                                                  1)
+                self.progress_grid.attach_next_to(
+                    copy_label, previous_label, Gtk.PositionType.BOTTOM, 1, 1)
                 self.progress_grid.attach_next_to(copy_progress, copy_label,
                                                   Gtk.PositionType.RIGHT, 1, 1)
                 self.copy_progresses[val] = copy_progress
@@ -630,12 +635,11 @@ class WereSyncWindow(Gtk.Window):
 
             return previous_label
 
-        final_label = create_partitions(device.DeviceManager(
-            self.source,
-            self.source_part_mask), part_label)
+        final_label = create_partitions(self.source, self.source_part_mask,
+                                        part_label)
         if self.lvm_button.get_active():
-            final_label = create_partitions(device.LVMDeviceManager(
-                self.lvm_source), final_label)
+            final_label = create_partitions(
+                self.lvm_source, "", final_label, lvm=True)
 
         boot_label = Gtk.Label(
             label=_("Making bootable: "),
@@ -658,6 +662,7 @@ class WereSyncWindow(Gtk.Window):
         self.part_progress.set_fraction(progress)
 
     def copy_callback(self, part, progress):
+        part = str(int(part))
         if progress < 0:
             LOGGER.debug(
                 "Error occurred copying partition {0}. Marking complete.".
@@ -677,10 +682,10 @@ class WereSyncWindow(Gtk.Window):
 
 def start_gui():
 
-    interface.enable_localization()
+    utils.enable_localization()
 
     try:
-        interface.check_python_version()
+        utils.check_python_version()
     except InvalidVersionError as ex:
         print(ex)
         # This might not work, if the user doesn't have a setup that support
@@ -693,9 +698,16 @@ def start_gui():
         dialog.destroy()
         sys.exit(1)
 
-    # interface.start_logging_handler(LOGGER)
-    interface.start_logging_handler()
-    # logging.basicConfig(level=logging.INFO)
+    utils.start_logging_handler(utils.DEFAULT_USER_LOG_LOCATION)
+
+    if not connected:
+        dialog = Gtk.MessageDialog(None, 0, Gtk.MessageType.ERROR,
+                                   Gtk.ButtonsType.OK,
+                                   _("Error starting WereSync."))
+        dialog.format_secondary_text(_("Weresync service not connected."))
+        dialog.run()
+        dialog.destroy()
+        sys.exit(1)
 
     LOGGER.info(_("Starting gui."))
     GObject.threads_init()
