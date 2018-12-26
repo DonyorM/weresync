@@ -29,7 +29,7 @@ from yapsy.IPlugin import IPlugin
 from distutils.sysconfig import get_python_lib
 import os
 import os.path
-import weresync.device as device
+import weresync.daemon.device as device
 from weresync.exception import DeviceError
 import sys
 import logging
@@ -38,7 +38,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def translate_uuid(copier, partition, path, target_mnt):
-        """Translates all uuids of the files in the given partition at path.
+    """Translates all uuids of the files in the given partition at path.
         This will not affect files which are not UTF-8 or ASCII, and it will
         not affect files which are greater than 200 MB.
 
@@ -49,40 +49,40 @@ def translate_uuid(copier, partition, path, target_mnt):
         :param target_mnt: the path to the folder where the partitions should
                            be mounted."""
 
-        mounted_here = False
-        try:
-            mount_point = copier.target.mount_point(partition)
-            if mount_point is None:
-                copier.target.mount_partition(partition, target_mnt)
-                mount_point = target_mnt
-                mounted_here = True
+    mounted_here = False
+    try:
+        mount_point = copier.target.mount_point(partition)
+        if mount_point is None:
+            copier.target.mount_partition(partition, target_mnt)
+            mount_point = target_mnt
+            mounted_here = True
 
-            for dname, dirs, files in os.walk(mount_point + path):
-                for fname in files:
-                    # This if block seeks to avoid opening huge files since
-                    # they are unlikely to be config files like we are looking
-                    # for.
-                    fpath = os.path.join(dname, fname)
-                    if (os.path.getsize(fpath)) / 1000000 > 200:
-                        continue
+        for dname, dirs, files in os.walk(mount_point + path):
+            for fname in files:
+                # This if block seeks to avoid opening huge files since
+                # they are unlikely to be config files like we are looking
+                # for.
+                fpath = os.path.join(dname, fname)
+                if (os.path.getsize(fpath)) / 1000000 > 200:
+                    continue
 
-                    try:
-                        with open(fpath) as file:
-                            text = file.read()
-                    except UnicodeDecodeError as ex:
-                        continue
+                try:
+                    with open(fpath) as file:
+                        text = file.read()
+                except UnicodeDecodeError as ex:
+                    continue
 
-                    uuid_dict = copier.get_uuid_dict()
-                    text = device.multireplace(text, uuid_dict)
-                    with open(fpath, "w") as f:
-                        f.write(text)
-        finally:
-            if mounted_here:
-                copier.target.unmount_partition(partition)
+                uuid_dict = copier.get_uuid_dict()
+                text = device.multireplace(text, uuid_dict)
+                with open(fpath, "w") as f:
+                    f.write(text)
+    finally:
+        if mounted_here:
+            copier.target.unmount_partition(partition)
 
 
 def mount_partition(manager, lvm_manager, part, mount_point):
-        """Mounts a partition and figures out whether or not the partition
+    """Mounts a partition and figures out whether or not the partition
         is in the LVM drive. It assumes a numerical partition is not a
         logical volume.
 
@@ -93,19 +93,23 @@ def mount_partition(manager, lvm_manager, part, mount_point):
         :param part: the name or number of the partition to mount.
         :param mount_point: the location to mount the partition."""
 
-        try:
-                part_num = int(part)
-                manager.mount_partition(part_num, mount_point)
-                return
-        except ValueError:
-                pass
+    try:
+        part_num = int(part)
+        manager.mount_partition(part_num, mount_point)
+        return
+    except ValueError:
+        pass
 
-        lvm_manager.mount_partition(part, mount_point)
+    lvm_manager.mount_partition(part, mount_point)
 
 
-def search_for_boot_part(target_mnt, target_manager,
-                         search_folder, exlcuded_partitions=[],):
-        """Finds the partition that is the boot partition, by searching for
+def search_for_boot_part(
+        target_mnt,
+        target_manager,
+        search_folder,
+        exlcuded_partitions=[],
+):
+    """Finds the partition that is the boot partition, by searching for
         a specific folder name. The first partition that contains this name
         or /boot/<name> will be returned.
 
@@ -115,35 +119,34 @@ def search_for_boot_part(target_mnt, target_manager,
         :param search_folder: The name of the folder to search for
         :param excluded_partitions: A list containing a list of partitions
                                     which should not be searched."""
-        for i in target_manager.get_partitions():
-            if i in exlcuded_partitions:
-                continue
-            try:
-                mounted_here = False
-                mount_point = target_manager.mount_point(i)
-                if mount_point is None:
-                        target_manager.mount_partition(i, target_mnt)
-                        mount_point = target_mnt
-                        mounted_here = True
-                mount_point += "/" if not mount_point.endswith("/") else ""
-                if (os.path.exists(mount_point + "boot/" + search_folder)
+    for i in target_manager.get_partitions():
+        if i in exlcuded_partitions:
+            continue
+        try:
+            mounted_here = False
+            mount_point = target_manager.mount_point(i)
+            if mount_point is None:
+                target_manager.mount_partition(i, target_mnt)
+                mount_point = target_mnt
+                mounted_here = True
+            mount_point += "/" if not mount_point.endswith("/") else ""
+            if (os.path.exists(mount_point + "boot/" + search_folder)
                     or os.path.exists(mount_point + search_folder)):
-                        return i
+                return i
+        except DeviceError as ex:
+            LOGGER.warning("Could not mount partition {0}. "
+                           "Assumed to not be the partition grub "
+                           "is on.".format(i))
+            LOGGER.debug("Error info:\n", exc_info=sys.exc_info())
+        finally:
+            try:
+                if mounted_here:
+                    target_manager.unmount_partition(i)
             except DeviceError as ex:
-                    LOGGER.warning("Could not mount partition {0}. "
-                                   "Assumed to not be the partition grub "
-                                   "is on.".format(i))
-                    LOGGER.debug("Error info:\n", exc_info=sys.exc_info())
-            finally:
-                    try:
-                        if mounted_here:
-                                target_manager.unmount_partition(i)
-                    except DeviceError as ex:
-                            LOGGER.warning("Error unmounting partition " + i)
-                            LOGGER.debug("Error info:\n",
-                                         exc_info=sys.exc_info())
-        else:  # No partition found
-            return None
+                LOGGER.warning("Error unmounting partition " + i)
+                LOGGER.debug("Error info:\n", exc_info=sys.exc_info())
+    else:  # No partition found
+        return None
 
 
 class IBootPlugin(IPlugin):
@@ -176,6 +179,7 @@ class IBootPlugin(IPlugin):
     def deactivate(self):
         """Called at plugin deactivation, after bootloader has been
         installed."""
+        pass
 
     def install_bootloader(self,
                            source_mnt,
@@ -216,8 +220,11 @@ class IBootPlugin(IPlugin):
         return "Installs the {0} bootloader.".format(self.prettyName)
 
 
-dirs = ["/usr/local/weresync/plugins", os.path.dirname(__file__),
-        get_python_lib()]
+dirs = [
+    "/usr/local/weresync/plugins",
+    os.path.dirname(__file__),
+    get_python_lib()
+]
 
 regex_analyzer = PluginFileAnalyzerMathingRegex("regex", "^weresync_.*\.py$")
 locator = PluginFileLocator([regex_analyzer])

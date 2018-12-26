@@ -159,7 +159,6 @@ class DeviceManager:
         :raises: :py:class:`~weresync.exception.DeviceError` if there is an
                  error mounting the device.
         """
-
         mount_proc = subprocess.Popen(
             [
                 "mount", self.part_mask.format(self.device, partition_num),
@@ -1652,8 +1651,13 @@ class DeviceCopier:
                                the bootloader should be installed.
         :param efi_partition: this is the partition of the Efi System
                               Partition. Should be None if not a UEFI system.
+        :param callback: a function which takes a single argument declaring
+                         whether or not the bootloader was successfully
+                         installed.
         """
         LOGGER.info("Using plugin: " + plugin_name)
+        if callback is not None:
+            callback(False)
         try:
             if plugin_name is not None:
                 import weresync.plugins as plugins
@@ -1692,6 +1696,8 @@ class DeviceCopier:
             else:
                 LOGGER.warning("No bootloader plugin specified. Not installing"
                                "bootloader.")
+            if callback is not None:
+                callback(True)
         except DeviceError as ex:
             LOGGER.warning("Error copying bootloader.")
             LOGGER.debug("Info: ", exc_info=sys.exc_info())

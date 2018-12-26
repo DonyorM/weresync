@@ -57,11 +57,17 @@ For more in-depth instructions, see the `installation documentation <https://wer
 Basic Usage
 ===========
 
-**Note:** WereSync requires root capabilities to run because it has to access block devices.
+**Note:** The WereSync daemon requires root capabilities to run because it has
+to access block devices. The client GUI and CLI programs do not need root permissions.
 
-The gui can be launched with the command::
+Copy the policy file in `src/wersync/resources/weresync-dbus.conf` to
+`/etc/dbus-1/system.d`. Then start the daemon::
 
-    $ sudo weresync-gui
+    $ sudo weresync-daemon & >/dev/null 2>&1
+
+Then gui can be launched with the command::
+
+    $ weresync-gui
 
 Which generates the following GUI, though generally the advanced options are unneeded:
 
@@ -75,7 +81,9 @@ To see the options for the terminal command use::
 
 To copy from /dev/sda to /dev/sdb (the two drives must have the same partition scheme) use::
 
-    $ sudo weresync /dev/sda /dev/sdb
+    $ weresync /dev/sda /dev/sdb
+
+After the copy is completely finished, you can kill the daemon process.
 
 For more information, including how to copy the partition table from drive to
 another, see the `Basic Usage <https://weresync.readthedocs.io/en/master/weresync.html>`__
