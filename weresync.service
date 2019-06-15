@@ -1,8 +1,0 @@
-[Unit]
-Description=Weresync Drive Copier
-After=dbus.service
-
-[Service]
-Type=dbus
-BusName=net.manilas.weresync.DriveCopier
-ExecStart=/usr/local/bin/weresync-daemon
