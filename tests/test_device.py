@@ -22,7 +22,7 @@ sys.path.insert(0, myPath + "/../src/")
 
 import pytest
 import unittest.mock as mock
-import weresync.device as device
+import weresync.daemon.device as device
 from weresync.exception import DeviceError, UnsupportedDeviceError
 
 
@@ -47,7 +47,7 @@ def generateStandardMock(monkeypatch,
     monkeypatch.setattr("subprocess.Popen", popen_constructor)
     if type != None:
         monkeypatch.setattr(
-            "weresync.device.DeviceManager.get_partition_table_type",
+            "weresync.daemon.device.DeviceManager.get_partition_table_type",
             mock_table_type)
 
 
@@ -320,7 +320,7 @@ Number  Start (sector)    End (sector)  Size       Code  Name
    5         1019904         1023966   2.0 MiB     8300  Linux filesystem
 """, None, 0)
     monkeypatch.setattr(
-        "weresync.device.DeviceManager.get_partition_table_type",
+        "weresync.daemon.device.DeviceManager.get_partition_table_type",
         lambda x: "gpt")
     manager = device.DeviceManager("gpt.img")
     result = manager.get_partition_size(5)
