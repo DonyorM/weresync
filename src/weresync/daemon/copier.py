@@ -108,8 +108,14 @@ def copy_partitions(copier, part_callback=None, lvm=False):
 
 
 class DriveCopier(object):
-    """
-  <node>
+    """Object which is shared over dbus to allow interfaces to access the
+    daemon."""
+
+    def __init__(self):
+        LOGGER.debug("making object")
+        self._interface_name = "net.manilas.weresync.DriveCopier"
+
+    dbus = """<node>
       <interface name='net.manilas.weresync.DriveCopier'>
         <method name='CopyDrive'>
           <arg type='s' name='source' direction='in' />
@@ -147,10 +153,6 @@ class DriveCopier(object):
         </signal>
       </interface>
     </node>"""
-
-    def __init__(self):
-        LOGGER.debug("making object")
-        self._interface_name = "net.manilas.weresync.DriveCopier"
 
     PartitionStatus = signal()
     CopyStatus = signal()

@@ -29,9 +29,13 @@ Basic Usage
 .. IMPORTANT::
    WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
 
+First start the daemon with::
+
+   $ sudo weresync-daemon > /dev/null 2>&1 &
+
 To start the gui use::
 
-    $ sudo weresync-gui
+    $ weresync-gui
 
 For help on how the terminal command works, run::
 
@@ -39,7 +43,7 @@ For help on how the terminal command works, run::
 
 For a basic setup, you could use a version of the following command::
  
-    $ sudo weresync -C --efi-partition <partition_number> /dev/sda /dev/sdb
+    $ weresync -C --efi-partition <partition_number> /dev/sda /dev/sdb
 
 =========
 Contents:

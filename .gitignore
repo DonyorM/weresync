@@ -24,6 +24,7 @@ var/
 .installed.cfg
 *.egg
 .pypirc
+dist-old
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -87,3 +88,6 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Translation files
+*.mo

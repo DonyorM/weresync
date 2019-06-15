@@ -48,13 +48,10 @@ if os.getuid() == 0:  # Install is running as root
 if __name__ == "__main__":
     setup(
         name="WereSync",
-        version="1.1.0",
+        version="1.1.1",
         package_dir={"": "src"},
         packages=find_packages("src"),
-        install_requires=[
-            "parse==1.6.6", "yapsy==1.11.223", "python-daemon==2.2.0",
-            "pydbus==0.6.0"
-        ],
+        install_requires=["parse==1.6.6", "yapsy==1.11.223", "pydbus==0.6.0"],
         entry_points={
             'console_scripts': [
                 "weresync = weresync.interface.cli:main",

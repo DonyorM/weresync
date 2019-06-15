@@ -16,7 +16,7 @@ Requirements
 ------------
 
 .. IMPORTANT::
-   WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
+   The WereSync daemon requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
 
 WereSync will copy GPT, MBR, and LVM drives. The source drive
 must have a valid disk label (such a disk label can be created with the gdisk or 
@@ -25,16 +25,21 @@ fdisk command). All `dependencies <installation.html#dependencies>`_ must be ins
 Commands
 --------
 
-WereSync always requires a source drive and a target drive. The source drive comes
-first. WereSync requires root permissions in order to access hard drive data. So to copy from /dev/sda to /dev/sdb, use this command::
+First start the weresync-daemon as root. Usually you want it to run in the
+background::
 
-    $ sudo weresync /dev/sda /dev/sdb
+   $ sudo weresync-daemon > /dev/null 2>&1 &
+
+WereSync always requires a source drive and a target drive. The source drive comes
+first. So to copy from /dev/sda to /dev/sdb, use this command::
+
+    $ weresync /dev/sda /dev/sdb
 
 This will simply copy data from one partition to the another, and if the partitions
 are different, you will encounter an error. To have WereSync fix your target drives
 partitions, use the ``-C`` flag::
 
-    $ sudo weresync -C /dev/sda /dev/sdb
+    $ weresync -C /dev/sda /dev/sdb
 
 On subsequent backups, you may not want to include the -C flag, since this can
 sometimes trigger unnecessary repartitioning.
@@ -45,7 +50,7 @@ LVM
 WereSync supports the copying of LVM drives with the `-l` flag::
 
 
-    $ sudo weresync -C -l -B 1 volume-group /dev/sda /dev/sdb
+    $ weresync -C -l -B 1 volume-group /dev/sda /dev/sdb
 
 It is highly recommended to pass which partition of the drive your boot
 partition is stored on, if you have a boot partition seperate from the VG.
@@ -63,7 +68,7 @@ can also be specified.
 For this to work, it is highly recommended that you pass the root partition
 with the ``-g`` flag::
 
-    $ sudo weresync -g 1 /dev/sda /dev/sdb
+    $ weresync -g 1 /dev/sda /dev/sdb
 
 If this is not passed, WereSync will attempt to discover the root filesystem on
 its own, but this is unreliable.
@@ -78,11 +83,11 @@ the grub partition.
 
 .. code-block:: bash
 
-    $ sudo weresync -E 2 -g 3 /dev/sda /dev/sdb
+    $ weresync -E 2 -g 3 /dev/sda /dev/sdb
 
 If you have your boot folder on a seperate partition, be sure to let WereSync know which partition that folder is on with the ``-B`` flag::
 
-    $ sudo weresync -E 1 -g 2 -B 3 /dev/sda /dev/sdb
+    $ weresync -E 1 -g 2 -B 3 /dev/sda /dev/sdb
         
 Obviously replace the numbers with the proper values for your system.
 
@@ -94,7 +99,7 @@ process. Bootloader plugins allow such a process to occur. All plugins
 available will be displayed at the end of the help message displayed with the
 ``-h`` flag. The specific plugin to use may be passed with the ``-L`` flag::
 
-    $ sudo weresync -L grub2 -E 1 -g 2 /dev/sda /dev/sdb
+    $ weresync -L grub2 -E 1 -g 2 /dev/sda /dev/sdb
 
 For more information on installing and creating bootloader plugins see the
 `bootloader plugin page <bootloader.html>`_

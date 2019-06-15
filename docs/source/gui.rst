@@ -11,10 +11,14 @@ By default WereSync outputs all log files to ``/var/log/weresync``. If any error
 
 To start the gui run the command::
 
-    $ sudo weresync-gui
+    $ weresync-gui
 
 .. IMPORTANT::
-   WereSync requires root permissions to run, because it has to access block devices. Standard linux permissions restrict access to block devices to ordinary users.
+   Be sure to start the weresync daemon first, using::
+
+       $ sudo weresync-daemon > /dev/null 2>&1 &
+
+   This requires root permissions
 
 .. image:: img/gui-example.png
    :align: left
@@ -56,4 +60,3 @@ The GUI can be started from the ``gui`` module with the method ``start_gui()``::
 
     >>> import weresync.gui
     >>> weresync.gui.start_gui()
-

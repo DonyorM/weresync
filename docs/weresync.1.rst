@@ -25,11 +25,17 @@ weresync [ options ] [**-g** *ROOT_PARTITION*] [**-B** *BOOT_PARTITION*]
          source target
 
 **weresync-gui**
+**weresync-daemon**
 
 DESCRIPTION
 -----------
 
-WereSync clones linux drives incrementally producing a bootable clone. Clones produced by WereSync will have different UUIDs than the original drive, but WereSync will update the fstab and bootloader to allow the clone to properly boot. Clones can be created with one command or one button click, using *weresync* or *weresync-gui* respectively.
+WereSync clones linux drives incrementally producing a bootable clone. Clones
+produced by WereSync will have different UUIDs than the original drive, but
+WereSync will update the fstab and bootloader to allow the clone to properly
+boot. Clones can be created with one command or one button click, using
+*weresync* or *weresync-gui* respectively, after the daemon in weresync-daemon
+has been started as root.
 
 OPTIONS
 -------
