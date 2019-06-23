@@ -48,7 +48,7 @@ if os.getuid() == 0:  # Install is running as root
 if __name__ == "__main__":
     setup(
         name="WereSync",
-        version="1.1.4",
+        version="1.1.5",
         package_dir={"": "src"},
         packages=find_packages("src"),
         install_requires=["parse==1.6.6", "yapsy==1.11.223", "pydbus==0.6.0"],
@@ -60,7 +60,7 @@ if __name__ == "__main__":
             'gui_scripts': ["weresync-gui = weresync.interface.gui:start_gui"]
         },
         package_data={
-            "weresync.resources": ["*.svg", "*.png"] + create_mo_files()
+            "weresync.resources": ["*.svg", "*.png", "weresync*.*"] + create_mo_files()
         },
         data_files=[(target_icon_loc,
                      ["src/weresync/resources/weresync.svg"])],

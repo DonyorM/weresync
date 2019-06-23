@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=WereSync
-Exec=sudo weresync-gui
+Exec=weresync-gui
 Icon=weresync
 Type=Application
-Categories=Administration
+Categories=System
