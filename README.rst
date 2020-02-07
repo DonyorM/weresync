@@ -31,7 +31,7 @@ There are a few reasons to use WereSync over the other tools.
   running. No booting to a live disk or pushing through a long initiation
   process. Unlike `dd` or CloneZilla, WereSync requires a low level of
   technical skill and has an easy learning curve
-- WereSync can run while the your main drive is being used, instead of blocking your computer up for hours at a time
+- WereSync can run while your main drive is being used, instead of blocking your computer up for hours at a time
 - WereSync will incrementally update clones, making subsequent clones much faster.
 - WereSync works quickly, a single command copies your entire drive, no booting to live CDs or managing MBRs.
 - WereSync can copy to a smaller drive, provided your drive's data will fit.
@@ -85,14 +85,14 @@ To copy from /dev/sda to /dev/sdb (the two drives must have the same partition s
 
 After the copy is completely finished, you can kill the daemon process.
 
-For more information, including how to copy the partition table from drive to
+For more information, including how to copy the partition table from one drive to
 another, see the `Basic Usage <https://weresync.readthedocs.io/en/master/weresync.html>`__
 documentation page.
 
 Documentation
 =============
 
-Documentation can be found on the `Read the Docs <https://weresync.readthedocs.io/en/master/>`__.
+Documentation can be found on `Read the Docs <https://weresync.readthedocs.io/en/master/>`__.
 
 Contributing and Bug Reports
 ============================
@@ -102,7 +102,7 @@ First, take a look at our `contribution guidelines <https://github.com/DonyorM/w
 To contribute simply fork this repository, make your changes, and submit a pull
 request. Bugs can be reported on the `issue tracker <https://github.com/donyorm/weresync/issues/>`__
 
-WereSync currently has huge need of people testing the program on complex drive setups. In order to do this please:
+WereSync currently has a huge need of people testing the program on complex drive setups. In order to do this please:
 
 
 
