@@ -13,7 +13,7 @@ packaging==19.0
 parse==1.6.6
 pkginfo==1.5.0.1
 pydbus==0.6.0
-Pygments==2.4.2
+Pygments==2.7.4
 pyparsing==2.4.0
 pytz==2019.1
 readme-renderer==24.0
