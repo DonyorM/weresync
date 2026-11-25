@@ -26,7 +26,7 @@ from yapsy.PluginManager import PluginManager
 from yapsy.PluginFileLocator import (PluginFileAnalyzerMathingRegex,
                                      PluginFileLocator)
 from yapsy.IPlugin import IPlugin
-from distutils.sysconfig import get_python_lib
+import sysconfig
 import os
 import os.path
 import weresync.daemon.device as device
@@ -223,7 +223,7 @@ class IBootPlugin(IPlugin):
 dirs = [
     "/usr/local/weresync/plugins",
     os.path.dirname(__file__),
-    get_python_lib()
+    sysconfig.get_paths()["purelib"]
 ]
 
 regex_analyzer = PluginFileAnalyzerMathingRegex("regex", "^weresync_.*\.py$")
